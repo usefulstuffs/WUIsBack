@@ -1,0 +1,123 @@
+// LegacyUpdate.idl : IDL source for LegacyUpdate
+//
+
+// This file will be processed by the MIDL tool to
+// produce the type library (LegacyUpdate.tlb) and marshalling code.
+
+#include <olectl.h>
+#include <idispids.h>
+import "oaidl.idl";
+import "ocidl.idl";
+
+typedef enum {
+	e_majorVer = 0,
+	e_minorVer = 1,
+	e_buildNumber = 2,
+	e_platform = 3,
+	e_SPMajor = 4,
+	e_SPMinor = 5,
+	e_productSuite = 6,
+	e_productType = 7,
+	e_systemMetric = 8,
+	e_SPVersionString = 9,
+	e_controlVersionString = 10,
+	e_VistaProductType = 11,
+	e_productName = 12,
+	e_displayVersion = 13,
+	e_maxOSVersionFieldValue = 13
+} OSVersionField;
+
+typedef enum {
+	e_nonAdmin = 0,
+	e_admin = 2,
+	e_elevated = 3
+} UserType;
+
+[
+	object,
+	uuid(C33085BB-C3E1-4D27-A214-AF01953DF5E5),
+	dual,
+	nonextensible,
+	helpstring("ILegacyUpdateCtrl Interface"),
+	pointer_default(unique)
+]
+interface ILegacyUpdateCtrl : IDispatch {
+	[id(1)]  HRESULT CheckControl([out, retval] VARIANT_BOOL *retval);
+	[id(2)]  HRESULT MessageForHresult(LONG inHresult, [out, retval] BSTR *retval);
+	[id(3)]  HRESULT GetOSVersionInfo(OSVersionField osField, LONG systemMetric, [out, retval] VARIANT *retval);
+	[id(14)] HRESULT RequestElevation(void);
+	[id(4)]  HRESULT CreateObject(BSTR progID, [out, retval] IDispatch **retval);
+	[id(5)]  HRESULT GetUserType([out, retval] UserType *retval);
+	[id(8)]  HRESULT RebootIfRequired(void);
+	[id(9)]  HRESULT ViewWindowsUpdateLog(void);
+	[id(13)] HRESULT OpenWindowsUpdateSettings(void);
+
+	[id(6),  propget] HRESULT IsRebootRequired([out, retval] VARIANT_BOOL *retval);
+	[id(7),  propget] HRESULT IsWindowsUpdateDisabled([out, retval] VARIANT_BOOL *retval);
+	[id(10), propget] HRESULT IsUsingWsusServer([out, retval] VARIANT_BOOL *retval);
+	[id(11), propget] HRESULT WsusServerUrl([out, retval] BSTR *retval);
+	[id(12), propget] HRESULT WsusStatusServerUrl([out, retval] BSTR *retval);
+};
+
+[
+	object,
+	uuid(4524BFBF-70BD-4EAC-AD33-6BADA4FB0638),
+	dual,
+	nonextensible,
+	pointer_default(unique)
+]
+interface IProgressBarControl : IDispatch
+{
+	[id(1), propget] HRESULT Value([out, retval] SHORT *retval);
+	[id(1), propput] HRESULT Value([in] SHORT newVal);
+};
+
+[
+	object,
+	uuid(3236E684-0E4B-4780-9F31-F1983F5AB78D),
+	dual,
+	nonextensible,
+	pointer_default(unique),
+	oleautomation
+]
+interface IElevationHelper : IDispatch
+{
+	[id(1)] HRESULT CreateObject(BSTR progID, [out, retval] IDispatch **retval);
+};
+
+[
+	uuid(05D22F33-C7C3-4C90-BDD9-CEDC86EA8FBE),
+	version(1.0),
+	helpstring("Legacy Update Control")
+]
+library LegacyUpdateLib {
+	importlib(STDOLE_TLB);
+
+	[
+		uuid(AD28E0DF-5F5A-40B5-9432-85EFD97D1F9F),
+		control,
+		helpstring("LegacyUpdateCtrl Class")
+	]
+	coclass LegacyUpdateCtrl {
+		[default] interface ILegacyUpdateCtrl;
+	};
+
+	[
+		uuid(7B875A2F-2DFB-4D38-91F5-5C0BFB74C377),
+		control,
+		helpstring("ProgressBarControl Class")
+	]
+	coclass ProgressBarControl
+	{
+		[default] interface IProgressBarControl;
+	};
+
+	[
+		uuid(84F517AD-6438-478F-BEA8-F0B808DC257F),
+		helpstring("ElevationHelper Class")
+	]
+	coclass ElevationHelper
+	{
+		[default] interface IElevationHelper;
+	};
+};
