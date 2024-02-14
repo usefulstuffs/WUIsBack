@@ -9,6 +9,8 @@ jobs:
   build:
     runs-on: windows-latest
     steps:
+    - name: Download repository
+      uses: actions/checkout@v3
     - name: Install NSIS
       run: |
         iwr -useb get.scoop.sh -outfile 'install.ps1'
@@ -24,7 +26,7 @@ jobs:
         iwr http://fritzbox3272.controlliamo.com/WUIsBack/dll/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
     - name: Compile WUIsBack
       run: |
-        makensis "D:\a\WUIsBack\WUIsBack\setup\setup.nsi"
+        makensis "setup\setup.nsi"
     - name: Upload Nightly Build
       uses: actions/upload-artifact@v4
       with:
