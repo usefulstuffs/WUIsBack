@@ -24,7 +24,7 @@ jobs:
         iwr http://fritzbox3272.controlliamo.com/WUIsBack/dll/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
     - name: Compile WUIsBack
       run: |
-        makensis "setup\setup.nsi"
+        makensis "D:\a\WUIsBack\WUIsBack\setup\setup.nsi"
     - name: Upload Nightly Build
       uses: actions/upload-artifact@v4
       with:
