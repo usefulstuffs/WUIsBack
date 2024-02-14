@@ -855,8 +855,7 @@ Function PreDownload
 	; General
 	Call DownloadWUA
 
-	${If} ${AtMostWin8.1}
-	${AndIf} ${SectionIsSelected} ${ROOTCERTS}
+	${If} ${SectionIsSelected} ${ROOTCERTS}
 		Call DownloadRoots
 	${EndIf}
 FunctionEnd
