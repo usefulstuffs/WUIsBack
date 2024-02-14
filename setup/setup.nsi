@@ -748,7 +748,6 @@ Function .onInit
 	; Try not to be too intrusive on Windows 10 and newer, which are (for now) fine
 	${If} ${AtLeastWin10}
 		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
-		!insertmacro RemoveSection ${ROOTCERTS}
 	${EndIf}
 FunctionEnd
 
