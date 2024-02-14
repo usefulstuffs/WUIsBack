@@ -1,4 +1,4 @@
-# [<img src="https://legacyupdate.net/socialbanner.png" alt="Legacy Update">](http://fritzbox3272.controlliamo.com/WUIsBack/)
+# [<img src="http://fritzbox3272.controlliamo.com/WUIsBack/banner.png" alt="WUIsBack">](http://fritzbox3272.controlliamo.com/WUIsBack/)
 
 [![Build](https://github.com/usefulstuffs/WUIsBack/actions/workflows/build.yml/badge.svg)](https://github.com/usefulstuffs/WUIsBack/actions/workflows/build.yml)
 
@@ -72,3 +72,5 @@ This project is not affiliated with or endorsed by Microsoft. This software is p
 Licensed under the Apache License, version 2.0. Refer to [LICENSE.md](https://github.com/usefulstuffs/WUIsBack/blob/main/LICENSE.md).
 
 The repository includes a compiled copy of my fork of [NSxfer](https://github.com/kirb/nsis-nsxfer), licensed under the [zlib/libpng license](https://github.com/kirb/nsis-nsxfer/blob/master/LICENSE).
+
+Some rights go to [kirb](https://github.com/kirb) for the original project [Legacy Update](https://legacyupdate.net) which gave me the idea to start this.
