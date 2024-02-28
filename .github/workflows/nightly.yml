@@ -22,8 +22,8 @@ jobs:
       run: |
         md .\Release
         md .\x64\Release
-        iwr http://fritzbox3272.controlliamo.com/WUIsBack/dll/LegacyUpdate32.dll -outfile '.\Release\LegacyUpdate.dll'
-        iwr http://fritzbox3272.controlliamo.com/WUIsBack/dll/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
+        iwr http://vichingo455.ddns.net/WUIsBack/dll/LegacyUpdate32.dll -outfile '.\Release\LegacyUpdate.dll'
+        iwr http://vichingo455.ddns.net/WUIsBack/dll/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
     - name: Compile WUIsBack
       run: |
         makensis "setup\setup.nsi"
