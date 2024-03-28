@@ -409,8 +409,9 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 ${MementoSectionEnd}
 
 ${MementoSection} "Allow OS Upgrade" ALLOWOSUPGRADE
+	WriteRegDword HKLM "${REGPATH_WUPOLICY}" "AllowOSUpgrade" 1
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}\OSUpgrade" "AllowOSUpgrade" 1
-	!insertmacro RestartWUAUService
+	Call RebootIfRequired
 ${MementoSectionEnd}
 
 ${MementoSectionDone}
@@ -497,7 +498,7 @@ SectionEnd
 	!insertmacro MUI_DESCRIPTION_TEXT ${ROOTCERTS}    "Updates the root certificate store to the latest from Microsoft, and enables additional modern security features. Root certificates are used to verify the security of encrypted (https) connections. This fixes connection issues with some websites."
 	!insertmacro MUI_DESCRIPTION_TEXT ${WIN7MU}       "Configures Windows to install updates for Microsoft Office and other Microsoft software."
 	!insertmacro MUI_DESCRIPTION_TEXT ${ACTIVATE}     "Your copy of Windows is not activated. If you update the root certificates store, Windows Product Activation can be completed over the internet. Legacy Update can start the activation wizard after installation so you can activate your copy of Windows."
-	!insertmacro MUI_DESCRIPTION_TEXT ${ALLOWOSUPGRADE} "Forces Windows Update to deliver the Windows 10/11 upgrade."
+	!insertmacro MUI_DESCRIPTION_TEXT ${ALLOWOSUPGRADE} "Forces Windows Update to deliver the Windows 10/11 upgrade.$\r$\n${DESCRIPTION_REBOOTS}"
 	!insertmacro MUI_DESCRIPTION_TEXT ${7ZIP}	   "Installs 7-Zip on Windows 2000 to open zip files.$\r$\n${DESCRIPTION_SUPEULA}"
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
@@ -829,7 +830,7 @@ Function PreDownload
 		${Else}
 			Call DownloadWin7SP1
 		${EndIf}
-
+		Call DownloadKB3102810
 		Call DownloadKB3138612
 		Call DownloadKB4474419
 		Call DownloadKB4490628
