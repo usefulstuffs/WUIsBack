@@ -204,6 +204,7 @@ SectionEnd
 
 Section "Windows Servicing Stack update" WIN7SSU
 	SectionIn Ro
+	Call InstallKB3102810
 	Call InstallKB3138612
 	Call InstallKB4474419
 	Call InstallKB4490628
@@ -272,8 +273,9 @@ ${MementoSection} "Enable Microsoft Update" WIN7MU
 		LegacyUpdateNSIS::MessageForHresult $0
 		Pop $0
 		MessageBox MB_USERICON "Failed to enable Microsoft Update.$\r$\n$\r$\n$0" /SD IDOK
+	${Else}
+		!insertmacro RestartWUAUService
 	${EndIf}
-	!insertmacro RestartWUAUService
 ${MementoSectionEnd}
 
 ${MementoSection} "Activate Windows" ACTIVATE
@@ -303,8 +305,8 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 	; Category 5:  XP Performance and Maintenance, Vista System and Maintenance, 7+ System and Security
 	; Category 10: XP SP2 Security Center, Vista Security, 7+ System and Security
 	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "" "${NAME}"
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "LocalizedString" '@"$OUTDIR\LegacyUpdate.dll",-2'
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "InfoTip" '@"$OUTDIR\LegacyUpdate.dll",-4'
+	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "LocalizedString" '${NAME}'
+	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "InfoTip" 'Check for software and driver updates via ${NAME}'
 	WriteRegStr   HKCR "${REGPATH_CPLCLSID}\DefaultIcon" "" '"$OUTDIR\LegacyUpdate.dll",-201'
 	WriteRegStr   HKCR "${REGPATH_CPLCLSID}\Shell\Open\Command" "" 'rundll32.exe "$OUTDIR\LegacyUpdate.dll",LaunchUpdateSite'
 	WriteRegDword HKCR "${REGPATH_CPLCLSID}\ShellFolder" "Attributes" 0
@@ -393,11 +395,13 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 
 	${If} $0 == "OK"
 		; HTTPS will work
+		!insertmacro DetailPrint "SSL: Detected working HTTPS!"
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
 		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
 	${Else}
 		; Probably not supported; use HTTP
+		!insertmacro DetailPrint "SSL: HTTPS is probably not supported. Using HTTP."
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
 		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
