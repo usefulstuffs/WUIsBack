@@ -417,6 +417,8 @@ ${MementoSection} "Allow OS Upgrade" ALLOWOSUPGRADE
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}" "DisableOSUpgrade" 0
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}\OSUpgrade" "AllowOSUpgrade" 1
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}\OSUpgrade" "DisableOSUpgrade" 0
+	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "AllowOSUpgrade" 1
+	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "DisableOSUpgrade" 0
 	Call RebootIfRequired
 ${MementoSectionEnd}
 
