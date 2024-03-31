@@ -421,7 +421,7 @@ ${MementoSection} "Allow OS Upgrade" ALLOWOSUPGRADE
 	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "DisableOSUpgrade" 0
 	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "OSUpgradeInteractive" 1
 	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "OSUpgradeRunOnceCount" 1
-	Call RebootIfRequired
+	!insertmacro RestartWUAUService
 ${MementoSectionEnd}
 
 ${MementoSectionDone}
