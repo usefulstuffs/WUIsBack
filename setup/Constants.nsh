@@ -15,8 +15,8 @@
 !define WEBSITE            "http://legacyupdate.net/"
 !define UPDATE_URL         "http://legacyupdate.net/windowsupdate/v6/"
 !define UPDATE_URL_HTTPS   "https://legacyupdate.net/windowsupdate/v6/"
-!define WSUS_SERVER        "http://vichingo455.ddns.net/WUIsBack/v6"
-!define WSUS_SERVER_HTTPS  "https://vichingo455.ddns.net/WUIsBack/v6"
+!define WSUS_SERVER        "http://update.oldwindows.de"
+!define WSUS_SERVER_HTTPS  "http://update.oldwindows.de"
 !define TRUSTEDR           "http://download.windowsupdate.com/msdownload/update/v3/static/trustedr/en"
 !define WIN81UPGRADE_URL   "https://go.microsoft.com/fwlink/?LinkId=798437"
 
