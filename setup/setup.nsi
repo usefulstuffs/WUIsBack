@@ -385,28 +385,30 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 
 	; Set WSUS server
 	; Check if Schannel is going to work with modern TLS
-	!insertmacro DetailPrint "Checking SSL connectivity..."
-	!insertmacro DownloadRequest "${WSUS_SERVER_HTTPS}/ClientWebService/ping.bin" NONE \
-		`/TIMEOUTCONNECT 0 /TIMEOUTRECONNECT 0`
-	Pop $0
-	Call DownloadWaitSilent
-	Pop $0
-	Pop $0
+	${If} ${AtMostWin8.1}
+		!insertmacro DetailPrint "Checking SSL connectivity..."
+		!insertmacro DownloadRequest "${WSUS_SERVER_HTTPS}/ClientWebService/ping.bin" NONE \
+			`/TIMEOUTCONNECT 0 /TIMEOUTRECONNECT 0`
+		Pop $0
+		Call DownloadWaitSilent
+		Pop $0
+		Pop $0
 
-	${If} $0 == "OK"
-		; HTTPS will work
-		!insertmacro DetailPrint "SSL: Detected working HTTPS!"
-		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
-		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
-		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
-	${Else}
-		; Probably not supported; use HTTP
-		!insertmacro DetailPrint "SSL: HTTPS is probably not supported. Using HTTP."
-		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
-		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
-		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
+		${If} $0 == "OK"
+			; HTTPS will work
+			!insertmacro DetailPrint "SSL: Detected working HTTPS!"
+			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
+			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
+			WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
+		${Else}
+			; Probably not supported; use HTTP
+			!insertmacro DetailPrint "SSL: HTTPS is probably not supported. Using HTTP."
+			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
+			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
+			WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
+		${EndIf}
+		WriteRegDword HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer" 1
 	${EndIf}
-	WriteRegDword HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer" 1
 
 	; Restart service
 	!insertmacro RestartWUAUService
@@ -419,8 +421,6 @@ ${MementoSection} "Allow OS Upgrade" ALLOWOSUPGRADE
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}\OSUpgrade" "DisableOSUpgrade" 0
 	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "AllowOSUpgrade" 1
 	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "DisableOSUpgrade" 0
-	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "OSUpgradeInteractive" 1
-	WriteRegDword HKLM "${REGPATH_WU}\OSUpgrade" "OSUpgradeRunOnceCount" 1
 	!insertmacro RestartWUAUService
 ${MementoSectionEnd}
 
