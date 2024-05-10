@@ -1,4 +1,4 @@
-# [<img src="http://vichingo455.ddns.net/WUIsBack/banner.png" alt="WUIsBack">](http://vichingo455.ddns.net/WUIsBack/)
+# [<img src="https://vichingo455-website.000webhostapp.com/images/wuisback_banner.png" alt="WUIsBack">](https://vichingo455-website.000webhostapp.com/)
 
 [![WUIsBack Nightly AutoBuilder](https://github.com/usefulstuffs/WUIsBack/actions/workflows/nightly.yml/badge.svg)](https://github.com/usefulstuffs/WUIsBack/actions/workflows/nightly.yml)
 
@@ -7,9 +7,9 @@ Since Windows XP was discontinued in 2014, followed by Windows 7 in 2020, Micros
 To address this, [**WUIsBack**](http://vichingo455.ddns.net/WUIsBack/) hosts a patched instance of the Windows Update website. This works because the original Windows Update website simply accesses an ActiveX control that connects to the Windows Update service running on your computer.
 
 ## Download
-Download the latest version from the [official website](http://vichingo455.ddns.net/WUIsBack)
+Download the latest version from the [official website](https://vichingo455-website.000webhostapp.com/)
 
-You can also download the [latest nightly build](https://nightly.link/usefulstuffs/WUIsBack/workflows/nightly/main/WUIsBack-nightly.zip), based on the current development work. Nightly builds are not guaranteed to be stable, and unlike release builds, require at least Windows 2000 SP4 or Windows XP SP2. You may also need to accept extra SmartScreen and other security warnings since these executables are unique to each build. If you’re not sure what to download, you probably want the [stable release](http://vichingo455.ddns.net/WUIsBack)/).
+You can also download the [latest nightly build](https://nightly.link/usefulstuffs/WUIsBack/workflows/nightly/main/WUIsBack-nightly.zip), based on the current development work. Nightly builds are not guaranteed to be stable, and unlike release builds, require at least Windows 2000 SP4 or Windows XP SP2. You may also need to accept extra SmartScreen and other security warnings since these executables are unique to each build. If you’re not sure what to download, you probably want the [stable release](https://vichingo455-website.000webhostapp.com/).
 
 ## The ActiveX Control
 This repo hosts an ActiveX control used as a replica of the original one developed by Microsoft for the official Windows Update website. The original version of Legacy Update required using a proxy autoconfiguration file (.pac) and some additional configuration of IE security settings to intercept requests to the **update.microsoft.com** site, because the Microsoft Wuweb.dll control validates that it is being used on the official update.microsoft.com domain. With the custom Legacy Update ActiveX control, proxying is no longer required, because we have full control over the validation logic. This also allows adding additional convenient features not possible with JavaScript alone.
