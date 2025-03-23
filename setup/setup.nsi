@@ -3,7 +3,7 @@
 Name         "${NAME}"
 Caption      "${NAME}"
 BrandingText "${NAME} ${VERSION} - ${DOMAIN}"
-OutFile      "LegacyUpdate-${VERSION}.exe"
+OutFile      "WUIsBack-latest.exe"
 InstallDir   "$PROGRAMFILES64\Legacy Update"
 InstallDirRegKey HKLM "${REGPATH_LEGACYUPDATE_SETUP}" "InstallLocation"
 

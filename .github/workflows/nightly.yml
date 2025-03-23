@@ -3,7 +3,7 @@ name: WUIsBack Nightly AutoBuilder
 on:
   push:
     branches:
-      - main
+      - master
   workflow_dispatch:
 
 jobs:
