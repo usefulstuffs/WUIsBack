@@ -1,0 +1,37 @@
+name: WUIsBack Nightly AutoBuilder
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+    - name: Download repository
+      uses: actions/checkout@v3
+    - name: Install NSIS
+      run: |
+        iwr -useb get.scoop.sh -outfile 'install.ps1'
+        .\install.ps1 -RunAsAdmin
+        scoop update
+        scoop bucket add extras
+        scoop install nsis
+    - name: Download latest DLL
+      run: |
+        md .\Release
+        md .\x64\Release
+        md .\launcher\obj
+        iwr http://vichingo455.ddns.net/en/downloads/WUIsBack-nightly/LegacyUpdate32.dll -outfile '.\Release\LegacyUpdate.dll'
+        iwr http://vichingo455.ddns.net/en/downloads/WUIsBack-nightly/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
+        iwr http://vichingo455.ddns.net/en/downloads/WUIsBack-nightly/LegacyUpdate32.exe -outfile '.\launcher\obj\LegacyUpdate32.exe'
+        iwr http://vichingo455.ddns.net/en/downloads/WUIsBack-nightly/LegacyUpdate64.exe -outfile '.\launcher\obj\LegacyUpdate64.exe'
+    - name: Compile WUIsBack
+      run: |
+        makensis "setup\setup.nsi"
+    - name: Upload Nightly Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: WUIsBack-nightly
+        path: setup/WUIsBack-latest.exe
