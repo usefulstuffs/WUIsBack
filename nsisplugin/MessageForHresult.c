@@ -2,12 +2,15 @@
 #include <nsis/pluginapi.h>
 #include "../shared/HResult.h"
 
-EXTERN_C __declspec(dllexport)
-void __cdecl MessageForHresult(HWND hwndParent, int string_size, TCHAR *variables, stack_t **stacktop, extra_parameters *extra) {
-	EXDLL_INIT();
-	g_hwndParent = hwndParent;
+PLUGIN_METHOD(MessageForHresult) {
+	PLUGIN_INIT();
 
 	HRESULT hr = popint();
+	if (hr == 0) {
+		pushstring(L"Unknown error");
+		return;
+	}
+
 	LPWSTR message = GetMessageForHresult(hr);
 	pushstring(message);
 	LocalFree(message);

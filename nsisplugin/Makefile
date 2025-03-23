@@ -1,17 +1,20 @@
 FILES   = \
 	$(wildcard *.c) \
 	../include/nsis/pluginapi.c \
-	../Shared/HResult.c \
-	../Shared/WUErrors.c
+	../shared/HResult.c \
+	../shared/LegacyUpdate.c \
+	../shared/LoadImage.c \
+	../shared/Registry.c
 RCFILES = resource.rc
+
+TAG     = i686
+PREFIX  = i686-w64-mingw32-
 
 BIN     = obj/LegacyUpdateNSIS.dll
 DEF     = $(patsubst %.dll,%.def,$(BIN))
 STATIC  = $(patsubst %.dll,%.a,$(BIN))
-OBJ     = $(foreach file,$(FILES),obj/$(notdir $(basename $(file)).o))
-RES     = $(foreach file,$(RCFILES),obj/$(notdir $(basename $(file)).res))
-
-PREFIX  = i686-w64-mingw32-
+OBJ     = $(foreach file,$(FILES),obj/$(notdir $(basename $(file)).$(TAG).o))
+RES     = $(foreach file,$(RCFILES),obj/$(notdir $(basename $(file)).$(TAG).res))
 
 CC = $(PREFIX)g++
 RC = $(PREFIX)windres
@@ -19,14 +22,12 @@ RC = $(PREFIX)windres
 override DEBUG := $(or $(DEBUG),1)
 
 CFLAGS = \
-	-std=c++11 \
 	-march=i486 \
 	-mdll \
 	-municode \
 	-DUNICODE \
 	-D_UNICODE \
 	$(if $(filter 1,$(DEBUG)),-D_DEBUG -g,-DNDEBUG -Os) \
-	-D__USE_MINGW_ANSI_STDIO=0 \
 	-D_USRDLL \
 	-s \
 	-fPIE \
@@ -35,12 +36,16 @@ CFLAGS = \
 	-fno-unwind-tables \
 	-fno-asynchronous-unwind-tables \
 	-fno-exceptions \
-	-fno-rtti \
 	-flto \
 	-Wno-write-strings \
 	-I../include \
 	-I../shared \
 	-include stdafx.h
+
+CXXFLAGS = \
+	$(CFLAGS) \
+	-std=c++11 \
+	-fno-rtti
 
 LDFLAGS = \
 	-nodefaultlibs \
@@ -61,49 +66,52 @@ LDFLAGS = \
 	-lkernel32 \
 	-luser32 \
 	-lole32 \
-	-loleaut32
+	-loleaut32 \
+	-ladvapi32 \
+	-lgdi32 \
+	-lmsimg32 \
+	-lcrypt32
 
 RCFLAGS = \
 	-F pe-i386 \
-	-O coff
+	-O coff \
+	-I../shared
 
 all: before-all $(BIN) after-all
-
-before-all:
-	mkdir -p obj
-
-after-all:
 ifeq ($(SIGN),1)
 	../build/sign.sh $(BIN)
 endif
 	cp $(BIN) ../setup/x86-unicode/
 
+before-all:
+	mkdir -p obj
+
 $(BIN): $(OBJ) $(RES)
 	$(CC) $^ $(CFLAGS) $(LDFLAGS) -o $@
 
-obj/%.o: %.c
-	$(CC) $< $(CFLAGS) -c -o $@
+obj/%.$(TAG).o: %.c
+	$(CC) -x c $< $(CFLAGS) -c -o $@
 
-obj/%.o: %.cpp
-	$(CC) $< $(CFLAGS) -c -o $@
+obj/%.$(TAG).o: %.cpp
+	$(CC) -x c++ $< $(CXXFLAGS) -c -o $@
 
-obj/%.o: ../shared/%.c
-	$(CC) $< $(CFLAGS) -c -o $@
+obj/%.$(TAG).o: ../shared/%.c
+	$(CC) -x c $< $(CFLAGS) -c -o $@
 
-obj/%.o: ../shared/%.cpp
-	$(CC) $< $(CFLAGS) -c -o $@
+obj/%.$(TAG).o: ../shared/%.cpp
+	$(CC) -x c++ $< $(CXXFLAGS) -c -o $@
 
-obj/%.o: ../include/nsis/%.c
-	$(CC) $< $(CFLAGS) -c -o $@
+obj/%.$(TAG).o: ../include/nsis/%.c
+	$(CC) -x c $< $(CFLAGS) -c -o $@
 
-obj/%.res: %.rc
+obj/%.$(TAG).res: %.rc
 	$(RC) $< $(RCFLAGS) -o $@
 
 clean:
 	rm -rf obj
 
 test:
-	$(MAKE) DEBUG=$(DEBUG)
+	+$(MAKE) DEBUG=$(DEBUG)
 	cd ../setup && makensis test.nsi
 	cd ../setup && explorer.exe test.exe
 

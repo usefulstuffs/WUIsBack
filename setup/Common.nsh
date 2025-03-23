@@ -2,12 +2,32 @@
 
 SetPluginUnload alwaysoff
 
+!if ${DEBUG} == 0
+	!packhdr        upx.tmp 'upx --lzma -9 upx.tmp'
+!endif
+
 !if ${SIGN} == 1
 	!finalize       '../build/sign.sh "%1"'
 	!uninstfinalize '../build/sign.sh "%1"'
 !endif
 
+!macro -Trace msg
+	!if ${DEBUG} == 1
+		!insertmacro _LOGICLIB_TEMP
+		!ifdef __FUNCTION__
+			StrCpy $_LOGICLIB_TEMP "${__FUNCTION__}"
+		!else
+			StrCpy $_LOGICLIB_TEMP "${__SECTION__}"
+		!endif
+		MessageBox MB_OK `${__FILE__}(${__LINE__}): $_LOGICLIB_TEMP: ${msg}`
+	!endif
+!macroend
+!define TRACE '!insertmacro -Trace'
+
 !define IsNativeIA64 '${IsNativeMachineArchitecture} ${IMAGE_FILE_MACHINE_IA64}'
+
+!undef RunningX64
+!define RunningX64 `"$PROGRAMFILES64" != "$PROGRAMFILES32"`
 
 Function GetArch
 	Var /GLOBAL Arch
@@ -33,31 +53,71 @@ FunctionEnd
 	IfErrors `${_f}` `${_t}`
 !macroend
 
-!define IsActiveXInstall `"" HasFlag "/activex"`
-!define IsHelp           `"" HasFlag "/?"`
+!define IsPassive `"" HasFlag "/passive"`
+!define IsActiveX `"" HasFlag "/activex"`
+!define IsHelp    `"" HasFlag "/?"`
+!define IsVerbose `"" HasFlag "/v"`
 
-!macro DetailPrint text
+!if ${DEBUG} == 1
+!define TestRunOnce `"" HasFlag "/testrunonce"`
+!endif
+
+!macro _NeedsPatch _a _b _t _f
+	!insertmacro _LOGICLIB_TEMP
+	Call Needs${_b}
+	Pop $_LOGICLIB_TEMP
+	StrCmp $_LOGICLIB_TEMP 1 `${_t}` `${_f}`
+!macroend
+
+!define NeedsPatch `"" NeedsPatch`
+
+!macro -DetailPrint level text
+!if ${level} == 0
+	${If} ${IsVerbose}
+		DetailPrint "${text}"
+	${EndIf}
+!else
 	SetDetailsPrint both
 	DetailPrint "${text}"
 	SetDetailsPrint listonly
+!endif
 !macroend
+
+!define VerbosePrint `!insertmacro -DetailPrint 0`
+!define DetailPrint  `!insertmacro -DetailPrint 1`
 
 Var /GLOBAL Download.ID
 
-!macro DownloadRequest url local extra
+Function DownloadRequest
+	; TODO: This is broken on XP for some reason
+	; Var /GLOBAL Download.UserAgent
+	; ${If} $Download.UserAgent == ""
+	; 	GetWinVer $R8 Major
+	; 	GetWinVer $R9 Minor
+	; 	StrCpy $Download.UserAgent "Mozilla/4.0 (${NAME} ${VERSION}; Windows NT $R8.$R9)"
+	; ${EndIf}
+	; /HEADER "User-Agent: $Download.UserAgent"
+
 	NSxfer::Request \
 		/TIMEOUTCONNECT 60000 \
 		/TIMEOUTRECONNECT 60000 \
 		/OPTCONNECTTIMEOUT 60000 \
 		/OPTRECEIVETIMEOUT 60000 \
 		/OPTSENDTIMEOUT 60000 \
-		/URL "${url}" \
-		/LOCAL "${local}" \
+		/URL "$R0" \
+		/LOCAL "$R1" \
 		/INTERNETFLAGS ${INTERNET_FLAG_RELOAD}|${INTERNET_FLAG_NO_CACHE_WRITE}|${INTERNET_FLAG_KEEP_CONNECTION}|${INTERNET_FLAG_NO_COOKIES}|${INTERNET_FLAG_NO_UI} \
 		/SECURITYFLAGS ${SECURITY_FLAG_STRENGTH_STRONG} \
-		${extra} \
+		$R2 \
 		/END
 	Pop $Download.ID
+FunctionEnd
+
+!macro DownloadRequest url local extra
+	StrCpy $R0 "${url}"
+	StrCpy $R1 "${local}"
+	StrCpy $R2 "${extra}"
+	Call DownloadRequest
 !macroend
 
 Function DownloadWaitSilent
@@ -67,27 +127,37 @@ FunctionEnd
 
 Function DownloadWait
 	NSxfer::Wait /ID $Download.ID /MODE PAGE \
-		/STATUSTEXT \
-			"{TIMEREMAINING} left - {RECVSIZE} of {FILESIZE} ({SPEED})" \
-			"{TIMEREMAINING} left - {TOTALRECVSIZE} of {TOTALFILESIZE} ({SPEED})" \
-		/ABORT "Legacy Update" "Cancelling will terminate Legacy Update setup." \
+		/STATUSTEXT "$(DownloadStatusSingle)" "$(DownloadStatusMulti)" \
+		/ABORT "$(^Name)" "$(MsgBoxDownloadAbort)" \
 		/END
 	NSxfer::Query /ID $Download.ID /ERRORCODE /ERRORTEXT /END
 FunctionEnd
 
 !macro -Download name url filename verbose
-	!insertmacro DetailPrint "Downloading ${name}..."
+!if ${verbose} == 1
+	${DetailPrint} "$(Downloading)${name}..."
+!endif
+	${If} ${IsVerbose}
+		${DetailPrint} "$(Downloading)${name}..."
+		${VerbosePrint} "From: ${url}"
+		${VerbosePrint} "To: ${filename}"
+	${EndIf}
 	!insertmacro DownloadRequest "${url}" "${filename}" ""
-	${If} ${verbose} == 1
+!if ${verbose} == 1
+	Call DownloadWait
+!else
+	${If} ${IsVerbose}
 		Call DownloadWait
 	${Else}
 		Call DownloadWaitSilent
 	${EndIf}
+!endif
 	Pop $1
 	Pop $0
 	${If} $0 != "OK"
 		${If} $1 != ${ERROR_INTERNET_OPERATION_CANCELLED}
-			MessageBox MB_USERICON "${name} failed to download.$\r$\n$\r$\n$0 ($1)" /SD IDOK
+			StrCpy $2 "${name}"
+			MessageBox MB_USERICON "$(MsgBoxDownloadFailed)" /SD IDOK
 		${EndIf}
 		Delete /REBOOTOK "${filename}"
 		SetErrorLevel 1
@@ -96,75 +166,69 @@ FunctionEnd
 !macroend
 
 !macro Download name url filename verbose
-	${If} ${FileExists} "$EXEDIR\${filename}"
-		${If} $OUTDIR != "$EXEDIR"
-			SetOutPath "$EXEDIR"
+	${IfNot} ${FileExists} "${RUNONCEDIR}\${filename}"
+		${If} ${FileExists} "$EXEDIR\${filename}"
+			CopyFiles /SILENT "$EXEDIR\${filename}" "${RUNONCEDIR}\${filename}"
+		${Else}
+			!insertmacro -Download '${name}' '${url}' '${RUNONCEDIR}\${filename}' ${verbose}
 		${EndIf}
-		StrCpy $0 "$EXEDIR\${filename}"
-	${Else}
-		${If} $OUTDIR != "$RunOnceDir"
-			SetOutPath "$RunOnceDir"
-		${EndIf}
-		${IfNot} ${FileExists} "$RunOnceDir\${filename}"
-			!insertmacro -Download '${name}' '${url}' '$RunOnceDir\${filename}' ${verbose}
-		${EndIf}
-		StrCpy $0 "$RunOnceDir\${filename}"
 	${EndIf}
+	StrCpy $0 "${RUNONCEDIR}\${filename}"
 !macroend
 
 Var /GLOBAL Exec.Command
+Var /GLOBAL Exec.Patch
 Var /GLOBAL Exec.Name
-Var /GLOBAL Exec.IsWusa
 
 Function ExecWithErrorHandling
-	Push $0
-	ExecWait '$Exec.Command' $0
-	${If} $0 == ${ERROR_SUCCESS_REBOOT_REQUIRED}
+	${VerbosePrint} "$(^Exec)$Exec.Command"
+	LegacyUpdateNSIS::ExecToLog `$Exec.Command`
+	Pop $R0
+	${VerbosePrint} "$(ExitCode)$R0"
+
+	${If} $R0 == ${ERROR_SUCCESS_REBOOT_REQUIRED}
+		${VerbosePrint} "$(RestartRequired)"
 		SetRebootFlag true
-	${ElseIf} $0 == ${ERROR_INSTALL_USEREXIT}
+	${ElseIf} $R0 == ${ERROR_INSTALL_USEREXIT}
 		SetErrorLevel ${ERROR_INSTALL_USEREXIT}
 		Abort
-	${ElseIf} $Exec.IsWusa == 1
-	${AndIf} $0 == 1
-		; wusa exits with 1 if the patch is already installed. Treat this as success.
-		DetailPrint "Installation skipped - already installed"
-	${ElseIf} $Exec.IsWusa == 1
-	${AndIf} $0 == ${WU_S_ALREADY_INSTALLED}
-		DetailPrint "Installation skipped - already installed"
-	${ElseIf} $Exec.IsWusa == 1
-	${AndIf} $0 == ${WU_E_NOT_APPLICABLE}
-		DetailPrint "Installation skipped - not applicable"
-	${ElseIf} $0 != 0
-		LegacyUpdateNSIS::MessageForHresult $0
+	${ElseIf} $R0 == ${WU_S_ALREADY_INSTALLED}
+		${DetailPrint} "$(AlreadyInstalled)"
+	${ElseIf} $R0 == ${WU_E_NOT_APPLICABLE}
+		${DetailPrint} "$(NotApplicable)"
+	${ElseIf} $R0 != 0
+		StrCpy $0 $R0
+		LegacyUpdateNSIS::MessageForHresult $R0
 		Pop $1
-		MessageBox MB_USERICON "$Exec.Name failed to install.$\r$\n$\r$\n$1 ($0)" /SD IDOK
-		SetErrorLevel $0
+		${DetailPrint} "$1 ($0)"
+		StrCpy $2 "$Exec.Name"
+		MessageBox MB_USERICON "$(MsgBoxInstallFailed)" /SD IDOK
+		SetErrorLevel $R0
 		Abort
 	${EndIf}
-	Pop $0
 FunctionEnd
 
-!macro ExecWithErrorHandling name command iswusa
+!macro ExecWithErrorHandling name command
 	StrCpy $Exec.Command '${command}'
 	StrCpy $Exec.Name '${name}'
-	StrCpy $Exec.IsWusa '${iswusa}'
 	Call ExecWithErrorHandling
 !macroend
 
 !macro Install name filename args
-	!insertmacro DetailPrint "Installing ${name}..."
-	!insertmacro ExecWithErrorHandling '${name}' '"$0" ${args}' 0
+	${DetailPrint} "$(Installing)${name}..."
+	!insertmacro ExecWithErrorHandling '${name}' '"$0" ${args}'
 !macroend
 
 !macro InstallSP name filename
 	; SPInstall.exe /norestart seems to be broken. We let it do a delayed restart, then cancel it.
-	!insertmacro DetailPrint "Extracting ${name}..."
-	!insertmacro ExecWithErrorHandling '${name}' '"$0" /X:"$PLUGINSDIR\${filename}"' 0
-	!insertmacro DetailPrint "Installing ${name}..."
-	!insertmacro ExecWithErrorHandling '${name}' '"$PLUGINSDIR\${filename}\spinstall.exe" /unattend /nodialog /warnrestart:600' 0
+	${DetailPrint} "$(Extracting)${name}..."
+	!insertmacro ExecWithErrorHandling '${name}' '"$0" /X:"$PLUGINSDIR\${filename}"'
+	${DetailPrint} "$(Installing)${name}..."
+	!insertmacro ExecWithErrorHandling '${name}' '"$WINDIR\system32\cmd.exe" /c "$PLUGINSDIR\${filename}\spinstall.exe" /unattend /nodialog /warnrestart:600'
 
 	; If we successfully abort a shutdown, we'll get exit code 0, so we know a reboot is required.
-	ExecWait "$WINDIR\system32\shutdown.exe /a" $0
+	LegacyUpdateNSIS::Exec '"$WINDIR\system32\shutdown.exe" /a'
+	Pop $0
 	${If} $0 == 0
 		SetRebootFlag true
 	${EndIf}
@@ -174,85 +238,84 @@ FunctionEnd
 	!insertmacro Download '${name} (${kbid})' '${url}' '${kbid}.msu' 1
 !macroend
 
+Function InstallMSU
+	${DetailPrint} "$(Extracting)$Exec.Name..."
+	${IfNot} ${IsVerbose}
+		SetDetailsPrint none
+	${EndIf}
+	CreateDirectory "$PLUGINSDIR\$Exec.Patch"
+	CreateDirectory "$PLUGINSDIR\$Exec.Patch\Temp"
+	StrCpy $Exec.Command '"$WINDIR\system32\expand.exe" -F:* "$0" "$PLUGINSDIR\$Exec.Patch"'
+	Call ExecWithErrorHandling
+	${IfNot} ${IsVerbose}
+		SetDetailsPrint lastused
+	${EndIf}
+
+	${DetailPrint} "$(Installing)$Exec.Name..."
+	${DisableX64FSRedirection}
+	FindFirst $0 $1 "$PLUGINSDIR\$Exec.Patch\*.xml"
+	${Do}
+		${If} $1 == ""
+			FindClose $R0
+			${Break}
+		${EndIf}
+
+		; We prefer Dism, but need to fall back to Pkgmgr for Vista.
+		${If} ${IsWinVista}
+			StrCpy $Exec.Command '"$WINDIR\system32\pkgmgr.exe" \
+				/n:"$PLUGINSDIR\$Exec.Patch\$1" \
+				/s:"$PLUGINSDIR\$Exec.Patch\Temp" \
+				/quiet /norestart'
+		${Else}
+			StrCpy $Exec.Command '"$WINDIR\system32\dism.exe" \
+				/Online \
+				/Apply-Unattend:"$PLUGINSDIR\$Exec.Patch\$1" \
+				/ScratchDir:"$PLUGINSDIR\$Exec.Patch\Temp" \
+				/LogPath:"$TEMP\LegacyUpdate-Dism.log" \
+				/Quiet /NoRestart'
+		${EndIf}
+		Call ExecWithErrorHandling
+
+		FindNext $0 $1
+	${Loop}
+	${EnableX64FSRedirection}
+FunctionEnd
+
 !macro InstallMSU kbid name
-	; Stop AU service before running wusa so it doesn't try checking for updates online first (which
-	; may never complete before we install our patches).
-	!insertmacro DetailPrint "Installing ${name} (${kbid})..."
-	SetDetailsPrint none
-	ExecShellWait "" "$WINDIR\system32\net.exe" "stop wuauserv" SW_HIDE
-	SetDetailsPrint listonly
-	!insertmacro ExecWithErrorHandling '${name} (${kbid})' '$WINDIR\system32\wusa.exe /quiet /norestart "$0"' 1
+	StrCpy $Exec.Patch '${kbid}'
+	StrCpy $Exec.Name '${name} (${kbid})'
+	Call InstallMSU
 !macroend
 
 !macro EnsureAdminRights
 	${IfNot} ${AtLeastWin2000}
-		MessageBox MB_USERICON "Legacy Update requires at least Windows 2000." /SD IDOK
+		MessageBox MB_USERICON|MB_OKCANCEL "$(MsgBoxOldWinVersion)" /SD IDCANCEL \
+			IDCANCEL +2
+		ExecShell "" "${WUR_WEBSITE}"
 		SetErrorLevel ${ERROR_OLD_WIN_VERSION}
 		Quit
 	${EndIf}
 
-	System::Call '${IsUserAnAdmin}() .r0'
+	ClearErrors
+	LegacyUpdateNSIS::IsAdmin
+	${If} ${Errors}
+		MessageBox MB_USERICON "$(MsgBoxPluginFailed)" /SD IDOK
+		SetErrorLevel 1
+		Quit
+	${EndIf}
+
+	Pop $0
 	${If} $0 == 0
-		MessageBox MB_USERICON "Log on as an administrator to install Legacy Update." /SD IDOK
+		MessageBox MB_USERICON "$(MsgBoxElevationRequired)" /SD IDOK
 		SetErrorLevel ${ERROR_ELEVATION_REQUIRED}
 		Quit
 	${EndIf}
 !macroend
 
 !macro InhibitSleep state
-	${If} ${state} == 1
-		System::Call '${SetThreadExecutionState}(${ES_CONTINUOUS}|${ES_SYSTEM_REQUIRED})'
-	${Else}
-		System::Call '${SetThreadExecutionState}(${ES_CONTINUOUS})'
-	${EndIf}
-!macroend
-
-!macro TryWithRetry command error
-	ClearErrors
-	${command}
-	IfErrors 0 +3
-		MessageBox MB_RETRYCANCEL|MB_USERICON \
-			'${error}$\r$\n$\r$\nIf Internet Explorer is open, close it and click Retry.' \
-			/SD IDCANCEL \
-			IDRETRY -3
-		Abort
-!macroend
-
-!macro TryFile file oname
-	!insertmacro TryWithRetry `File "/ONAME=${oname}" "${file}"` 'Unable to write to "${oname}".'
-!macroend
-
-!macro TryDelete file
-	!insertmacro TryWithRetry `Delete "${file}"` 'Unable to delete "${file}".'
-!macroend
-
-!macro TryRename src dest
-	!insertmacro TryWithRetry `Rename "${src}" "${dest}"` 'Unable to write to "${dest}".'
-!macroend
-
-!macro RegisterDLL un arch file
-	${If} "${un}" == "Un"
-		StrCpy $0 "/u"
-	${Else}
-		StrCpy $0 ""
-	${EndIf}
-
-	${If} "${arch}" == "x64"
-		${DisableX64FSRedirection}
-	${EndIf}
-
-	ClearErrors
-	ExecWait '"$WINDIR\system32\regsvr32.exe" /s $0 "${file}"'
-	${If} ${Errors}
-		; Do it again non-silently so the user can see the error.
-		ExecWait '"$WINDIR\system32\regsvr32.exe" $0 "${file}"'
-		${If} "${arch}" == "x64"
-			${EnableX64FSRedirection}
-		${EndIf}
-		Abort
-	${EndIf}
-
-	${If} "${arch}" == "x64"
-		${EnableX64FSRedirection}
-	${EndIf}
+!if ${state} == 1
+	System::Call '${SetThreadExecutionState}(${ES_CONTINUOUS}|${ES_SYSTEM_REQUIRED})'
+!else
+	System::Call '${SetThreadExecutionState}(${ES_CONTINUOUS})'
+!endif
 !macroend

@@ -6,6 +6,7 @@
 
 #include <atlctl.h>
 #include <MsHTML.h>
+#include <wuapi.h>
 #include "resource.h"
 #include "LegacyUpdate_i.h"
 
@@ -93,13 +94,17 @@ private:
 	IHTMLDocument2 *GetHTMLDocument();
 	HWND GetIEWindowHWND();
 	BOOL IsPermitted();
+	STDMETHODIMP GetElevatedHelper(CComPtr<IElevationHelper> &retval);
 
 public:
+	STDMETHODIMP SetClientSite(IOleClientSite *pClientSite);
+
 	STDMETHODIMP CheckControl(VARIANT_BOOL *retval);
 	STDMETHODIMP MessageForHresult(LONG inHresult, BSTR *retval);
 	STDMETHODIMP GetOSVersionInfo(OSVersionField osField, LONG systemMetric, VARIANT *retval);
 	STDMETHODIMP RequestElevation();
 	STDMETHODIMP CreateObject(BSTR progID, IDispatch **retval);
+	STDMETHODIMP SetBrowserHwnd(IUpdateInstaller *installer);
 	STDMETHODIMP GetUserType(UserType *retval);
 	STDMETHODIMP get_IsRebootRequired(VARIANT_BOOL *retval);
 	STDMETHODIMP get_IsWindowsUpdateDisabled(VARIANT_BOOL *retval);

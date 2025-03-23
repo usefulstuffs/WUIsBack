@@ -1,6 +1,6 @@
 #pragma once
-#include <windows.h>
-#include <stdio.h>
-#include <comdef.h>
 
-HRESULT QueryWMIProperty(BSTR query, BSTR property, VARIANT *value);
+#include <windows.h>
+#include <oaidl.h>
+
+EXTERN_C HRESULT QueryWMIProperty(LPWSTR query, LPWSTR property, LPVARIANT value);

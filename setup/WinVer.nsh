@@ -16,6 +16,7 @@
 !define WINVER_7                 0x0601 ;  6.1.7600
 !define WINVER_8                 0x0602 ;  6.2.9200
 !define WINVER_8.1               0x0603 ;  6.3.9600
+!define WINVER_10TP              0x0604 ;  6.4.9841-9883
 !define WINVER_10                0x0A00 ; 10.0.10240
 
 !define WINVER_SERVER_2000       ${WINVER_2000}
@@ -27,6 +28,18 @@
 !define WINVER_SERVER_2012R2     ${WINVER_8.1}
 !define WINVER_SERVER_2016       ${WINVER_10}
 
+!define WINVER_BUILD_2000        2195
+!define WINVER_BUILD_XP2002      2600
+!define WINVER_BUILD_XP2003      3790
+!define WINVER_BUILD_VISTA       6000
+!define WINVER_BUILD_VISTA_SP1   6001
+!define WINVER_BUILD_VISTA_SP2   6002
+!define WINVER_BUILD_VISTA_ESU   6003
+!define WINVER_BUILD_7           7600
+!define WINVER_BUILD_7_SP1       7601
+!define WINVER_BUILD_8           9200
+!define WINVER_BUILD_8.1         9600
+!define WINVER_BUILD_10          10240
 !define WINVER_BUILD_11          22000
 
 !define /ifndef VER_NT_WORKSTATION 1
@@ -58,7 +71,6 @@
 		Var /GLOBAL __WINVERBUILD
 		Var /GLOBAL __WINVERSP
 		Var /GLOBAL __WINVERPROD
-		Var /GLOBAL __WINVERSUITE
 	!endif
 
   StrCmp $__WINVEROS "" _winver_noveryet
@@ -69,7 +81,19 @@
 		GetWinVer $__WINVERBUILD Build
 		GetWinVer $__WINVERSP    ServicePack
 		GetWinVer $__WINVERPROD  Product
+!macroend
 
+!macro __WinVer_InitEx
+	!ifndef __WINVER_VARS_DECLARED_EX
+		!define __WINVER_VARS_DECLARED_EX
+
+		Var /GLOBAL __WINVERSUITE
+	!endif
+
+  StrCmp $__WINVERSUITE "" _winver_noveryet_ex
+		Return
+
+	_winver_noveryet_ex:
 		Push $0
 		Push $1
 		System::Alloc ${OSVERSIONINFOEXW_SIZE}
@@ -107,7 +131,7 @@
 
 !macro __WinVer_TestSuite _a num _t _f
 	!insertmacro _LOGICLIB_TEMP
-	${CallArtificialFunction} __WinVer_Init
+	${CallArtificialFunction} __WinVer_InitEx
 	IntOp $_LOGICLIB_TEMP $__WINVERSUITE & ${num}
 	!insertmacro _= $_LOGICLIB_TEMP ${num} `${_t}` `${_f}`
 !macroend
@@ -127,6 +151,7 @@
 
 !define IsHomeEdition      `"" _WinVer_TestSuite ${VER_SUITE_PERSONAL}`
 !define IsEmbedded         `"" _WinVer_TestSuite ${VER_SUITE_EMBEDDEDNT}`
+!define IsDatacenter       `"" _WinVer_TestSuite ${VER_SUITE_DATACENTER}`
 !define IsHomeServer       `"" _WinVer_TestSuite ${VER_SUITE_WH_SERVER}`
 
 !define IsSafeMode         `!= _WinVer_TestSystemMetric ${SM_CLEANBOOT}`

@@ -1,176 +1,166 @@
 #include "stdafx.h"
 #include <comdef.h>
 #include <atlstr.h>
+#include <shlwapi.h>
+#include "HResult.h"
 #include "WMI.h"
+#include "VersionInfo.h"
 
-#pragma comment(lib, "version.lib")
 #pragma comment(lib, "advapi32.lib")
+#pragma comment(lib, "shlwapi.lib")
+#pragma comment(lib, "version.lib")
 
-// Defined as being Vista+, older versions ignore the flag.
-#ifndef EWX_RESTARTAPPS
-#define EWX_RESTARTAPPS 0x00000040
-#endif
-
-extern "C" IMAGE_DOS_HEADER __ImageBase;
-
-#define OwnModule ((HMODULE)&__ImageBase)
+typedef DWORD (WINAPI *_InitiateShutdownW)(LPWSTR lpMachineName, LPWSTR lpMessage, DWORD dwGracePeriod, DWORD dwShutdownFlags, DWORD dwReason);
 
 static BOOL _loadedProductName = FALSE;
 static CComVariant _productName;
 
-static BOOL _loadedOwnVersion = FALSE;
-static LPWSTR _version;
-static UINT _versionSize;
+typedef struct {
+	DWORD version;
+	DWORD osFlag;
+	LPWSTR library;
+	UINT stringIDs[3];
+} WinNT5Variant;
 
-void GetOwnFileName(LPWSTR *filename, LPDWORD size) {
-	*filename = (LPWSTR)malloc(MAX_PATH);
-	*size = GetModuleFileName(OwnModule, *filename, MAX_PATH);
-}
+static const WinNT5Variant nt5Variants[] = {
+	// XP
+	{0x0501, OS_TABLETPC,       L"winbrand.dll", { 180, 2000}},
+	{0x0501, OS_MEDIACENTER,    L"winbrand.dll", { 180, 2001}},
+	{0x0501, OS_STARTER,        L"winbrand.dll", { 180, 2002}},
+	{0x0501, OS_EMBPOS,         L"winbrand.dll", { 180, 2003}},
+	{0x0501, OS_WINFLP,         L"winbrand.dll", { 180, 2004}},
+	{0x0501, OS_EMBSTD2009,     L"winbrand.dll", { 180, 2005}},
+	{0x0501, OS_EMBPOS2009,     L"winbrand.dll", { 180, 2006}},
+	// Check for XP Embedded last as WES2009 also identifies as OS_EMBEDDED.
+	{0x0501, OS_EMBEDDED,       L"sysdm.cpl",    { 180, 189}},
 
-HRESULT GetOwnVersion(LPWSTR *version, LPDWORD size) {
-	if (!_loadedOwnVersion) {
-		LPWSTR filename;
-		DWORD filenameSize;
-		GetOwnFileName(&filename, &filenameSize);
+	// Server 2003
+	{0x0502, OS_APPLIANCE,      L"winbrand.dll", { 181, 2002}},
+	{0x0502, OS_STORAGESERVER,  L"wssbrand.dll", {1101, 1102}},
+	{0x0502, OS_COMPUTECLUSTER, L"hpcbrand.dll", {1101, 1102, 1103}},
+	{0x0502, OS_HOMESERVER,     L"whsbrand.dll", {1101, 1102}},
+};
 
-		DWORD verHandle;
-		DWORD verInfoSize = GetFileVersionInfoSize(filename, &verHandle);
-		if (verInfoSize == 0) {
-			return AtlHresultFromLastError();
-		}
+HRESULT GetOSProductName(LPVARIANT productName) {
+	if (!_loadedProductName) {
+		_loadedProductName = TRUE;
+		VariantInit(&_productName);
 
-		LPVOID verInfo = new BYTE[verInfoSize];
-		if (!GetFileVersionInfo(filename, verHandle, verInfoSize, verInfo)) {
-			return AtlHresultFromLastError();
-		}
-
-		if (!VerQueryValue(verInfo, L"\\StringFileInfo\\040904B0\\ProductVersion", (LPVOID *)&_version, &_versionSize)) {
-			return AtlHresultFromLastError();
-		}
-	}
-
-	*version = _version;
-	*size = _versionSize;
-	return _version == NULL ? E_FAIL : NOERROR;
-}
-
-HRESULT GetRegistryString(HKEY key, LPCWSTR subkeyPath, LPCWSTR valueName, LPDWORD type, LPWSTR *data, LPDWORD size) {
-	HKEY subkey;
-	HRESULT hr = HRESULT_FROM_WIN32(RegOpenKeyEx(key, subkeyPath, 0, KEY_READ, &subkey));
-	if (!SUCCEEDED(hr)) {
-		goto end;
-	}
-
-	if (data != NULL && size != NULL) {
-		DWORD length = 512 * sizeof(WCHAR);
-		LPWSTR buffer = (LPWSTR)malloc(length);
-		LSTATUS status;
-		do {
-			status = RegQueryValueEx(subkey, valueName, NULL, type, (BYTE *)buffer, &length);
-			if (status == ERROR_MORE_DATA) {
-				length += 256 * sizeof(WCHAR);
-				buffer = (LPWSTR)realloc(buffer, length);
-			} else if (status != ERROR_SUCCESS) {
-				hr = HRESULT_FROM_WIN32(status);
-				goto end;
+		// Handle the absolute disaster of Windows XP/Server 2003 edition branding
+		WORD winver = GetWinVer();
+		if (HIBYTE(winver) == 5) {
+			WinNT5Variant variant = {};
+			for (DWORD i = 0; i < ARRAYSIZE(nt5Variants); i++) {
+				if (winver == nt5Variants[i].version && IsOS(nt5Variants[i].osFlag)) {
+					variant = nt5Variants[i];
+					break;
+				}
 			}
-		} while (status == ERROR_MORE_DATA);
 
-		*data = buffer;
-		*size = length / sizeof(WCHAR);
-	}
+			if (variant.version) {
+				HMODULE brandDll = LoadLibraryEx(variant.library, NULL, LOAD_LIBRARY_AS_DATAFILE);
+				if (brandDll) {
+					WCHAR brandStr[1024];
+					ZeroMemory(brandStr, ARRAYSIZE(brandStr));
 
-end:
-	if (subkey != NULL) {
-		RegCloseKey(subkey);
-	}
-	if (!SUCCEEDED(hr)) {
-		if (data != NULL) {
-			*data = NULL;
+					DWORD j = 0;
+					while (variant.stringIDs[j] != 0) {
+						UINT id = variant.stringIDs[j];
+						WCHAR str[340];
+						if (id == 180 || id == 181) {
+							// Get "Microsoft Windows XP" or "Microsoft Windows Server 2003" string
+							HMODULE sysdm = LoadLibraryEx(L"sysdm.cpl", NULL, LOAD_LIBRARY_AS_DATAFILE);
+							if (sysdm) {
+								LoadString(sysdm, id, str, ARRAYSIZE(str));
+								FreeLibrary(sysdm);
+							}
+						} else {
+							LoadString(brandDll, id, str, ARRAYSIZE(str));
+						}
+
+						if (j > 0) {
+							wcscat(brandStr, L" ");
+						}
+
+						wcscat(brandStr, str);
+						j++;
+					}
+
+					_productName.vt = VT_BSTR;
+					_productName.bstrVal = SysAllocString(brandStr);
+					FreeLibrary(brandDll);
+				}
+			}
 		}
-		if (size != NULL) {
-			*size = 0;
-		}
-	}
-	return hr;
-}
 
-HRESULT GetRegistryDword(HKEY key, LPCWSTR subkeyPath, LPCWSTR valueName, LPDWORD type, LPDWORD data) {
-	HKEY subkey;
-	HRESULT hr = HRESULT_FROM_WIN32(RegOpenKeyEx(key, subkeyPath, 0, KEY_READ, &subkey));
-	if (!SUCCEEDED(hr)) {
-		goto end;
-	}
-
-	if (data != NULL) {
-		DWORD length = sizeof(DWORD);
-		hr = HRESULT_FROM_WIN32(RegQueryValueEx(subkey, valueName, NULL, type, (LPBYTE)data, &length));
-		if (!SUCCEEDED(hr)) {
-			goto end;
+		if (_productName.vt == VT_EMPTY) {
+			// Get from WMI
+			HRESULT hr = QueryWMIProperty(L"SELECT Caption FROM Win32_OperatingSystem", L"Caption", &_productName);
+			if (!SUCCEEDED(hr)) {
+				return hr;
+			}
 		}
 	}
 
-end:
-	if (subkey != NULL) {
-		RegCloseKey(subkey);
-	}
-	return hr;
-}
-
-LPWSTR GetMessageForHresult(HRESULT hr) {
-	_com_error *error = new _com_error(hr);
-	CString message = error->ErrorMessage();
-	BSTR outMessage = message.AllocSysString();
-	return outMessage;
-}
-
-HRESULT GetOSProductName(VARIANT *pProductName) {
-	if (_loadedProductName) {
-		VariantCopy(pProductName, &_productName);
-		return S_OK;
-	}
-
-	VariantInit(&_productName);
-	_loadedProductName = true;
-	return QueryWMIProperty(L"SELECT Caption FROM Win32_OperatingSystem", L"Caption", &_productName);
+	VariantCopy(productName, &_productName);
+	return S_OK;
 }
 
 HRESULT Reboot() {
 	HRESULT hr = E_FAIL;
 
-	// Make sure we have permission to shut down.
+	// Make sure we have permission to shut down
 	HANDLE token;
-	if (OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
-		LUID shutdownLuid;
-		if (LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &shutdownLuid) != 0) {
-			// Ask the system nicely to give us shutdown privilege.
-			TOKEN_PRIVILEGES privileges;
-			privileges.PrivilegeCount = 1;
-			privileges.Privileges[0].Luid = shutdownLuid;
-			privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
-			if (!AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL)) {
-				hr = AtlHresultFromLastError();
-				TRACE("AdjustTokenPrivileges() failed: %ls\n", GetMessageForHresult(hr));
-			}
-		}
-	} else {
+	if (!OpenProcessToken(GetCurrentProcess(), TOKEN_ADJUST_PRIVILEGES | TOKEN_QUERY, &token)) {
 		hr = AtlHresultFromLastError();
 		TRACE("OpenProcessToken() failed: %ls\n", GetMessageForHresult(hr));
+		goto end;
 	}
 
-	// Reboot with reason "Operating System: Security fix (Unplanned)"
-	if (!InitiateSystemShutdownEx(NULL, NULL, 0, FALSE, TRUE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_SECURITYFIX)) {
+	LUID shutdownLuid;
+	if (!LookupPrivilegeValue(NULL, SE_SHUTDOWN_NAME, &shutdownLuid)) {
 		hr = AtlHresultFromLastError();
-		TRACE("InitiateSystemShutdownExW() failed: %ls\n", GetMessageForHresult(hr));
+		TRACE("LookupPrivilegeValue() failed: %ls\n", GetMessageForHresult(hr));
+		goto end;
+	}
 
-		// Try ExitWindowsEx instead
-		// Win2k: Use ExitWindowsEx, which is only guaranteed to work for the current logged in user
-		if (!ExitWindowsEx(EWX_REBOOT | EWX_RESTARTAPPS | EWX_FORCEIFHUNG, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_SECURITYFIX)) {
+	// Ask the system nicely to give us shutdown privilege
+	TOKEN_PRIVILEGES privileges;
+	privileges.PrivilegeCount = 1;
+	privileges.Privileges[0].Luid = shutdownLuid;
+	privileges.Privileges[0].Attributes = SE_PRIVILEGE_ENABLED;
+	if (!AdjustTokenPrivileges(token, FALSE, &privileges, 0, NULL, NULL)) {
+		hr = AtlHresultFromLastError();
+		TRACE("AdjustTokenPrivileges() failed: %ls\n", GetMessageForHresult(hr));
+		goto end;
+	}
+
+	// Reboot with reason "Operating System: Security fix (Unplanned)", ensuring to install updates.
+	// Try InitiateShutdown first (Vista+)
+	_InitiateShutdownW $InitiateShutdownW = (_InitiateShutdownW)GetProcAddress(GetModuleHandle(L"advapi32.dll"), "InitiateShutdownW");
+	if ($InitiateShutdownW) {
+		hr = HRESULT_FROM_WIN32($InitiateShutdownW(NULL, NULL, 0, SHUTDOWN_RESTART | SHUTDOWN_INSTALL_UPDATES, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_SECURITYFIX));
+	}
+
+	// Try InitiateSystemShutdownEx (2k/XP)
+	if (!SUCCEEDED(hr)) {
+		TRACE("InitiateShutdown() failed: %ls\n", GetMessageForHresult(hr));
+
+		if (InitiateSystemShutdownEx(NULL, NULL, 0, FALSE, TRUE, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_SECURITYFIX) == 0) {
 			hr = AtlHresultFromLastError();
-			TRACE("ExitWindowsEx() failed: %ls\n", GetMessageForHresult(hr));
+			TRACE("InitiateSystemShutdownExW() failed: %ls\n", GetMessageForHresult(hr));
 		}
-	} else {
-		hr = S_OK;
+	}
+
+	// Last-ditch attempt ExitWindowsEx (only guaranteed to work for the current logged in user)
+	if (!ExitWindowsEx(EWX_REBOOT | EWX_FORCEIFHUNG, SHTDN_REASON_MAJOR_OPERATINGSYSTEM | SHTDN_REASON_MINOR_SECURITYFIX)) {
+		hr = AtlHresultFromLastError();
+		TRACE("ExitWindowsEx() failed: %ls\n", GetMessageForHresult(hr));
+	}
+
+end:
+	if (token) {
+		CloseHandle(token);
 	}
 
 	return hr;

@@ -3,9 +3,9 @@
 Name         "${NAME}"
 Caption      "${NAME}"
 BrandingText "${NAME} ${VERSION} - ${DOMAIN}"
-OutFile      "WUIsBack-latest.exe"
-InstallDir   "$PROGRAMFILES\${NAME}"
-InstallDirRegKey HKLM "${REGPATH_LEGACYUPDATE_SETUP}" "InstallDir"
+OutFile      "LegacyUpdate-${VERSION}.exe"
+InstallDir   "$PROGRAMFILES64\Legacy Update"
+InstallDirRegKey HKLM "${REGPATH_LEGACYUPDATE_SETUP}" "InstallLocation"
 
 Unicode               true
 RequestExecutionLevel admin
@@ -17,17 +17,30 @@ SetCompressor         /SOLID lzma
 
 VIAddVersionKey /LANG=1033 "ProductName"     "${NAME}"
 VIAddVersionKey /LANG=1033 "ProductVersion"  "${LONGVERSION}"
-VIAddVersionKey /LANG=1033 "CompanyName"     "Hashbang Productions and Vichingo455"
-VIAddVersionKey /LANG=1033 "LegalCopyright"  "${U+00A9} Hashbang Productions and Vichingo455. All rights reserved."
+VIAddVersionKey /LANG=1033 "CompanyName"     "Hashbang Productions"
+VIAddVersionKey /LANG=1033 "LegalCopyright"  "${U+00A9} Hashbang Productions. All rights reserved."
 VIAddVersionKey /LANG=1033 "FileDescription" "${NAME}"
 VIAddVersionKey /LANG=1033 "FileVersion"     "${LONGVERSION}"
 VIProductVersion ${LONGVERSION}
 VIFileVersion    ${LONGVERSION}
 
+ReserveFile "${NSIS_TARGET}\System.dll"
+ReserveFile "${NSIS_TARGET}\NSxfer.dll"
+ReserveFile "${NSIS_TARGET}\LegacyUpdateNSIS.dll"
+ReserveFile "banner-wordmark-classic.bmp"
+ReserveFile "Patches.ini"
+ReserveFile "..\${VSBUILD32}\LegacyUpdate.dll"
+ReserveFile "..\x64\${VSBUILD64}\LegacyUpdate.dll"
+ReserveFile "..\launcher\obj\LegacyUpdate32.exe"
+ReserveFile "..\launcher\obj\LegacyUpdate64.exe"
+
+Var /GLOBAL UninstallInstalled
+
+!define RUNONCEDIR "$COMMONPROGRAMDATA\Legacy Update"
+
 !define MUI_UI                       "modern_aerowizard.exe"
 !define MUI_UI_HEADERIMAGE           "modern_aerowizard.exe"
 
-!define MUI_CUSTOMFUNCTION_GUIINIT   OnShow
 !define MUI_CUSTOMFUNCTION_UNGUIINIT un.OnShow
 !define MUI_CUSTOMFUNCTION_ABORT     CleanUp
 
@@ -35,22 +48,20 @@ VIFileVersion    ${LONGVERSION}
 !define MUI_UNICON                   "..\LegacyUpdate\icon.ico"
 
 !define MUI_HEADERIMAGE
-!define MUI_HEADERIMAGE_BITMAP       "setupbanner.bmp"
-!define MUI_HEADERIMAGE_UNBITMAP     "setupbanner.bmp"
+!define MUI_HEADERIMAGE_BITMAP       "banner-wordmark-classic.bmp"
+!define MUI_HEADERIMAGE_UNBITMAP     "banner-wordmark-classic.bmp"
 
 !define MUI_TEXT_ABORT_TITLE         "Installation Failed"
 
 !define MEMENTO_REGISTRY_ROOT        HKLM
 !define MEMENTO_REGISTRY_KEY         "${REGPATH_LEGACYUPDATE_SETUP}"
 
-Var /GLOBAL InstallDir
-Var /GLOBAL RunOnceDir
-
 !include FileFunc.nsh
 !include Integration.nsh
 !include LogicLib.nsh
 !include Memento.nsh
 !include MUI2.nsh
+!include nsDialogs.nsh
 !include Sections.nsh
 !include Win\COM.nsh
 !include Win\WinError.nsh
@@ -63,20 +74,19 @@ Var /GLOBAL RunOnceDir
 
 !include Win32.nsh
 !include Common.nsh
+!include RunOnce.nsh
 !include AeroWizard.nsh
 !include Download2KXP.nsh
-!include DownloadVista7.nsh
-!include Download8.nsh
+!include DownloadVista78.nsh
 !include DownloadWUA.nsh
-!include RunOnce.nsh
 !include UpdateRoots.nsh
-!include 7zip.nsh
+; !include ActiveXPage.nsh
 
 !insertmacro GetParameters
 !insertmacro GetOptions
 
-!define MUI_PAGE_HEADER_TEXT         "Welcome to WUIsBack"
-!define MUI_COMPONENTSPAGE_TEXT_TOP  "Select what you would like WUIsBack to do. An internet connection is required to download additional components from Microsoft. Your computer will restart automatically if needed. Close all other programs before continuing."
+!define MUI_PAGE_HEADER_TEXT         "Welcome to Legacy Update - Vichingo455's Mod"
+!define MUI_COMPONENTSPAGE_TEXT_TOP  "Select what you would like Legacy Update to do. An internet connection is required to download additional components from Microsoft. Your computer will restart automatically if needed. Close all other programs before continuing."
 !define MUI_PAGE_CUSTOMFUNCTION_PRE  ComponentsPageCheck
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW OnShow
 !define MUI_PAGE_FUNCTION_GUIINIT    OnShow
@@ -84,13 +94,15 @@ Var /GLOBAL RunOnceDir
 
 !insertmacro MUI_PAGE_COMPONENTS
 
+; Page custom ActiveXPage
+
 !define MUI_PAGE_HEADER_TEXT         "Performing Actions"
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW OnShow
 
 !insertmacro MUI_PAGE_INSTFILES
 
-!define MUI_PAGE_HEADER_TEXT         "Uninstall WUIsBack"
-!define MUI_UNCONFIRMPAGE_TEXT_TOP   "WUIsBack will be uninstalled. Your Windows Update configuration will be reset to directly use Microsoft servers."
+!define MUI_PAGE_HEADER_TEXT         "Uninstall Legacy Update - Vichingo455's Mod"
+!define MUI_UNCONFIRMPAGE_TEXT_TOP   "Legacy Update - Vichingo455's Mod will be uninstalled. Your Windows Update configuration will be reset to directly use Microsoft servers."
 !define MUI_PAGE_CUSTOMFUNCTION_SHOW un.OnShow
 
 !insertmacro MUI_UNPAGE_CONFIRM
@@ -100,13 +112,15 @@ Var /GLOBAL RunOnceDir
 
 !insertmacro MUI_UNPAGE_INSTFILES
 
-!insertmacro MUI_LANGUAGE "English"
+!include Strings.nsh
+
+; Uncomment lines below to enable code signing when compiling under Windows
+; !uninstfinalize 'sign.cmd "certPath" certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
+; !finalize 'sign.cmd "certPath" certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
 
 !macro RestartWUAUService
-	!insertmacro DetailPrint "Restarting Windows Update service..."
-	SetDetailsPrint none
-	ExecShellWait "" "$WINDIR\system32\net.exe" "stop wuauserv" SW_HIDE
-	SetDetailsPrint listonly
+	${DetailPrint} "$(StatusRestartingWUAU)"
+	LegacyUpdateNSIS::Exec '"$WINDIR\system32\net.exe" stop wuauserv'
 !macroend
 
 Function OnShow
@@ -117,59 +131,91 @@ Function un.OnShow
 	Call un.AeroWizardOnShow
 FunctionEnd
 
-Section -BeforeInstall
-	!insertmacro InhibitSleep 1
-SectionEnd
+Function MakeUninstallEntry
+	${IfNot} $UninstallInstalled == 1
+		StrCpy $UninstallInstalled 1
+		SetOutPath $INSTDIR
+		WriteUninstaller "$INSTDIR\Uninstall.exe"
 
-Section -PreDownload
+		; Add uninstall entry
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayName"          "${NAME}"
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayIcon"          '"$INSTDIR\Uninstall.exe",-103'
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayVersion"       "${VERSION}"
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "Publisher"            "${NAME}"
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "URLInfoAbout"         "${WEBSITE}"
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "InstallLocation"      "$INSTDIR"
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "UninstallString"      '"$INSTDIR\Uninstall.exe"'
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "QuietUninstallString" '"$INSTDIR\Uninstall.exe" /S'
+		WriteRegDword HKLM "${REGPATH_UNINSTSUBKEY}" "NoModify"             1
+		WriteRegDword HKLM "${REGPATH_UNINSTSUBKEY}" "NoRepair"             1
+		${MakeARPInstallDate} $0
+		WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "InstallDate" $0
+	${EndIf}
+FunctionEnd
+
+Section -BeforeInstall PREREQS_START
+	!insertmacro InhibitSleep 1
+
 	${IfNot} ${IsRunOnce}
 	${AndIfNot} ${IsPostInstall}
+		; Download files
 		Call PreDownload
+
+		; If a reboot is pending, do it now
+		Call RebootIfCbsRebootPending
+
+!if ${DEBUG} == 1
+		${If} ${TestRunOnce}
+			SetRebootFlag true
+			Call RebootIfRequired
+		${EndIf}
+!endif
+	${Else}
+		; Wait for packages to install if needed
+		Call PollCbsInstall
 	${EndIf}
 SectionEnd
 
-Section - PREREQS_START
-SectionEnd
-
 ; Win2k prerequisities
-Section "Windows 2000 Service Pack 4" W2KSP4
-	SectionIn Ro
-	Call InstallW2KSP4
-	Call InstallKB835732
-	Call RebootIfRequired
-SectionEnd
-
-Section "Internet Explorer 6.0 Service Pack 1" IE6SP1
+Section "$(IE) 6.0 $(SP) 1" IE6SP1
 	SectionIn Ro
 	Call InstallIE6
 	Call RebootIfRequired
 SectionEnd
 
-Section "7-Zip File Manager" 7ZIP
-	Call Install7Zip
+Section "Windows 2000 $(SP) 4" W2KSP4
+	SectionIn Ro
+	Call InstallW2KSP4
+	Call InstallW2KUR1
+	Call FixW2KUR1
+	Call RebootIfRequired
 SectionEnd
 
 ; XP 2002 prerequisities
-${MementoSection} "Windows XP Service Pack 3" XPSP3
-	Call InstallXPSP2
+${MementoSection} "Windows XP $(SP) 3" XPSP3
+	Call InstallXPSP1a
 	Call RebootIfRequired
 	Call InstallXPSP3
 	Call RebootIfRequired
 ${MementoSectionEnd}
 
-${MementoSection} "Windows XP Embedded Service Pack 3" XPESP3
+${MementoSection} "Windows XP $(EMB) $(SP) 3" XPESP3
 	Call InstallXPESP3
 	Call RebootIfRequired
 ${MementoSectionEnd}
 
+${MementoUnselectedSection} "$(SectionWES09)" WES09
+	WriteRegDword HKLM "${REGPATH_POSREADY}" "Installed" 1
+${MementoSectionEnd}
+
 ; XP 2003 prerequisities
-${MementoSection} "Windows XP/Server 2003 Service Pack 2" 2003SP2
+${MementoSection} "Windows XP/$(SRV) 2003 $(SP) 2" 2003SP2
 	Call Install2003SP2
 	Call RebootIfRequired
 ${MementoSectionEnd}
 
 ; Vista prerequisities
-Section "Windows Vista Service Pack 2" VISTASP2
+Section "Windows Vista $(SP) 2" VISTASP2
 	SectionIn Ro
 	Call InstallVistaSP1
 	Call RebootIfRequired
@@ -177,7 +223,7 @@ Section "Windows Vista Service Pack 2" VISTASP2
 	Call RebootIfRequired
 SectionEnd
 
-Section "Windows Servicing Stack update" VISTASSU
+Section "$(SectionSSU)" VISTASSU
 	SectionIn Ro
 	Call InstallKB3205638
 	Call InstallKB4012583
@@ -187,7 +233,7 @@ Section "Windows Servicing Stack update" VISTASSU
 	Call RebootIfRequired
 SectionEnd
 
-${MementoSection} "Internet Explorer 9" VISTAIE9
+${MementoSection} "$(IE) 9" VISTAIE9
 	Call InstallKB971512
 	Call InstallKB2117917
 	Call RebootIfRequired
@@ -196,41 +242,36 @@ ${MementoSection} "Internet Explorer 9" VISTAIE9
 ${MementoSectionEnd}
 
 ; 7 prerequisities
-Section "Windows 7 Service Pack 1" WIN7SP1
+Section "Windows 7 $(SP) 1" WIN7SP1
 	SectionIn Ro
 	Call InstallWin7SP1
 	Call RebootIfRequired
 SectionEnd
 
-Section "Windows Servicing Stack update" WIN7SSU
+Section "$(SectionSSU)" WIN7SSU
 	SectionIn Ro
-	Call InstallKB3102810
 	Call InstallKB3138612
 	Call InstallKB4474419
 	Call InstallKB4490628
 	Call RebootIfRequired
 SectionEnd
 
-; Windows Home Server 2011 (Server 2008 R2) prerequisites
-Section "Windows Home Server Update Rollup 4" WHS2011U4
+; Windows Home Server 2011 is based on Server 2008 R2, but has its own separate "rollup" updates
+Section "$(SectionWHS2011U4)" WHS2011U4
 	SectionIn Ro
 	Call InstallKB2757011
 	Call RebootIfRequired
 SectionEnd
 
 ; 8 prerequisities
-Section "Windows Servicing Stack update" WIN8SSU
+Section "$(SectionSSU)" WIN8SSU
 	SectionIn Ro
 	Call InstallKB4598297
 	Call RebootIfRequired
 SectionEnd
 
-Section "Windows 8.1" WIN81UPGRADE
-	; No-op; we'll launch the support site in post-install.
-SectionEnd
-
 ; 8.1 prerequisities
-Section "Windows 8.1 Update 1" WIN81UPDATE1
+Section "Windows 8.1 $(Update) 1" WIN81U1
 	SectionIn Ro
 	Call InstallKB3021910
 	Call InstallClearCompressionFlag
@@ -242,23 +283,19 @@ Section "Windows 8.1 Update 1" WIN81UPDATE1
 	Call RebootIfRequired
 SectionEnd
 
-Section "Windows Servicing Stack update" WIN81SSU
+Section "$(SectionSSU)" WIN81SSU
 	SectionIn Ro
 	Call InstallKB3021910
 	Call RebootIfRequired
 SectionEnd
 
 ; Shared prerequisites
-Section "Windows Update Agent update" WUA
+Section "$(SectionWUA)" WUA
 	SectionIn Ro
 	Call InstallWUA
 SectionEnd
 
-${MementoUnselectedSection} "Enable Windows Embedded 2009 updates" WES09
-	WriteRegDword HKLM "${REGPATH_POSREADY}" "Installed" 1
-${MementoSectionEnd}
-
-${MementoSection} "Update root certificates store" ROOTCERTS
+${MementoSection} "$(SectionRootCerts)" ROOTCERTS
 	Call ConfigureCrypto
 
 	${IfNot} ${IsPostInstall}
@@ -266,19 +303,19 @@ ${MementoSection} "Update root certificates store" ROOTCERTS
 	${EndIf}
 ${MementoSectionEnd}
 
-${MementoSection} "Enable Microsoft Update" WIN7MU
+${MementoSection} "$(SectionEnableMU)" WIN7MU
 	LegacyUpdateNSIS::EnableMicrosoftUpdate
 	Pop $0
 	${If} $0 != 0
 		LegacyUpdateNSIS::MessageForHresult $0
-		Pop $0
-		MessageBox MB_USERICON "Failed to enable Microsoft Update.$\r$\n$\r$\n$0" /SD IDOK
-	${Else}
-		!insertmacro RestartWUAUService
+		Pop $1
+		${DetailPrint} "$1 ($0)"
+		MessageBox MB_USERICON "$(MsgBoxMUFailed)" /SD IDOK
 	${EndIf}
+	!insertmacro RestartWUAUService
 ${MementoSectionEnd}
 
-${MementoSection} "Activate Windows" ACTIVATE
+${MementoSection} "$(SectionActivate)" ACTIVATE
 	; No-op; we'll launch the activation wizard in post-install.
 ${MementoSectionEnd}
 
@@ -286,67 +323,97 @@ Section - PREREQS_END
 SectionEnd
 
 ; Main installation
-${MementoSection} "WUIsBack" LEGACYUPDATE
-	SetOutPath $InstallDir
-	WriteUninstaller "$OUTDIR\Uninstall.exe"
+${MementoSection} "$(^Name)" LEGACYUPDATE
+	; WUSERVER section
+	Call MakeUninstallEntry
+	; Check if Schannel is going to work with modern TLS
+	${If} ${AtLeastWinVista}
+		${DetailPrint} "$(StatusCheckingSSL)"
+		!insertmacro DownloadRequest "${WSUS_SERVER_HTTPS}/ClientWebService/ping.bin" NONE \
+			`/TIMEOUTCONNECT 0 /TIMEOUTRECONNECT 0`
+		Pop $0
+		Call DownloadWaitSilent
+		Pop $0
+		Pop $0
+		${VerbosePrint} "Ping result: $0"
+	${Else}
+		StrCpy $0 ""
+	${EndIf}
 
-	; Add uninstall entry
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayName" "${NAME}"
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayIcon" '"$OUTDIR\LegacyUpdate.dll",-201'
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "DisplayVersion" "${VERSION}"
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "Publisher" "${NAME}"
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "URLInfoAbout" "${WEBSITE}"
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "UninstallString" '"$OUTDIR\Uninstall.exe"'
-	WriteRegStr   HKLM "${REGPATH_UNINSTSUBKEY}" "QuietUninstallString" '"$OUTDIR\Uninstall.exe" /S'
-	WriteRegDword HKLM "${REGPATH_UNINSTSUBKEY}" "NoModify" 1
-	WriteRegDword HKLM "${REGPATH_UNINSTSUBKEY}" "NoRepair" 1
+	${If} $0 == "OK"
+		; HTTPS will work
+		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
+		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
+		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
+	${Else}
+		; Probably not supported; use HTTP
+		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
+		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
+		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
+	${EndIf}
+
+	WriteRegDword HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer" 1
+
+	; Restart service
+	!insertmacro RestartWUAUService
+
+	; ACTIVEX section
+	SetOutPath $INSTDIR
+	; Call MakeUninstallEntry
 
 	; Add Control Panel entry
 	; Category 5:  XP Performance and Maintenance, Vista System and Maintenance, 7+ System and Security
 	; Category 10: XP SP2 Security Center, Vista Security, 7+ System and Security
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "" "${NAME}"
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "LocalizedString" '${NAME}'
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "InfoTip" 'Check for software and driver updates via ${NAME}'
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}\DefaultIcon" "" '"$OUTDIR\LegacyUpdate.dll",-201'
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}\Shell\Open\Command" "" 'rundll32.exe "$OUTDIR\LegacyUpdate.dll",LaunchUpdateSite'
-	WriteRegDword HKCR "${REGPATH_CPLCLSID}\ShellFolder" "Attributes" 0
-	WriteRegDword HKCR "${REGPATH_CPLCLSID}" "{305CA226-D286-468e-B848-2B2E8E697B74} 2" 5
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "System.ApplicationName" "${CPL_APPNAME}"
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "System.ControlPanelCategory" "5,10"
-	WriteRegStr   HKCR "${REGPATH_CPLCLSID}" "System.Software.TasksFileUrl" "$OUTDIR\LegacyUpdate.dll,-202"
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}"                    ""                "${NAME}"
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}"                    "LocalizedString" '@"$OUTDIR\LegacyUpdate.exe",-2'
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}"                    "InfoTip"         '@"$OUTDIR\LegacyUpdate.exe",-4'
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}\DefaultIcon"        ""                '"$OUTDIR\LegacyUpdate.exe",-100'
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}\Shell\Open\Command" ""                '"$OUTDIR\LegacyUpdate.exe"'
+	WriteRegDword HKCR "${REGPATH_HKCR_CPLCLSID}\ShellFolder"        "Attributes"      0
+	WriteRegDword HKCR "${REGPATH_HKCR_CPLCLSID}" "{305CA226-D286-468e-B848-2B2E8E697B74} 2" 5
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}" "System.ApplicationName"             "${CPL_APPNAME}"
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}" "System.ControlPanelCategory"        "5,10"
+	WriteRegStr   HKCR "${REGPATH_HKCR_CPLCLSID}" "System.Software.TasksFileUrl"       '"$OUTDIR\LegacyUpdate.exe",-202'
+
 	WriteRegStr   HKLM "${REGPATH_CPLNAMESPACE}" "" "${NAME}"
 
-	; Install DLL, with detection for it being in use by IE
+	; Install DLLs
+	${VerbosePrint} "Closing IE windows"
+	LegacyUpdateNSIS::CloseIEWindows
+
 	; NOTE: Here we specifically check for amd64, because the DLL is amd64.
 	; We still install to native Program Files on IA64, but with x86 binaries.
-	SetOverwrite try
-	!insertmacro TryFile "..\Release\LegacyUpdate.dll" "$OUTDIR\LegacyUpdate.dll"
+	File "..\${VSBUILD32}\LegacyUpdate.dll"
 	${If} ${IsNativeAMD64}
-		${If} ${FileExists} "$OUTDIR\LegacyUpdate32.dll"
-			!insertmacro TryDelete "$OUTDIR\LegacyUpdate32.dll"
+		${If} ${FileExists} "LegacyUpdate32.dll"
+			Delete "LegacyUpdate32.dll"
 		${EndIf}
-		!insertmacro TryRename "$OUTDIR\LegacyUpdate.dll" "$OUTDIR\LegacyUpdate32.dll"
-		!insertmacro TryFile "..\x64\Release\LegacyUpdate.dll" "$OUTDIR\LegacyUpdate.dll"
+		Rename "LegacyUpdate.dll" "LegacyUpdate32.dll"
+		File "..\x64\${VSBUILD64}\LegacyUpdate.dll"
 	${EndIf}
-	SetOverwrite on
+	Call CopyLauncher
 
-	; Register DLL
-	${If} ${IsNativeAMD64}
-		!insertmacro RegisterDLL "" x64 "$OUTDIR\LegacyUpdate.dll"
-		!insertmacro RegisterDLL "" x86 "$OUTDIR\LegacyUpdate32.dll"
-	${Else}
-		!insertmacro RegisterDLL "" x86 "$OUTDIR\LegacyUpdate.dll"
+	; Register DLLs
+	ExecWait '"$OUTDIR\LegacyUpdate.exe" /regserver $HWNDPARENT' $0
+	${If} $0 != 0
+		Abort
 	${EndIf}
 
 	; Create shortcut
+	${If} ${IsWin2000}
+		; Doesn't seem to support @ syntax with an exe?
+		StrCpy $0 "Check for software updates via Legacy Update."
+	${Else}
+		StrCpy $0 "Check for software updates via Legacy Update."
+	${EndIf}
+
 	CreateShortcut "$COMMONSTARTMENU\${NAME}.lnk" \
-		"$SYSDIR\rundll32.exe" '"$OUTDIR\LegacyUpdate.dll",LaunchUpdateSite' \
-		"$OUTDIR\LegacyUpdate.dll" 0 \
+		'"$OUTDIR\LegacyUpdate.exe"' '' \
+		"$OUTDIR\LegacyUpdate.exe" 0 \
 		SW_SHOWNORMAL "" \
-		'@"$OUTDIR\LegacyUpdate.dll",-4'
+		"$0"
 
 	; Hide WU shortcuts
-	; TODO: How can we consistently find the shortcuts for non-English installs?
 	${If} ${AtMostWinXP2003}
 		${If} ${FileExists} "$COMMONSTARTMENU\Windows Update.lnk"
 			CreateDirectory "$OUTDIR\Backup"
@@ -360,10 +427,28 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 	${EndIf}
 
 	; Add to trusted sites
+	WriteRegDword HKLM "${REGPATH_ZONEDOMAINS}\${DOMAIN}"    "http"  2
+	WriteRegDword HKLM "${REGPATH_ZONEDOMAINS}\${DOMAIN}"    "https" 2
+	WriteRegDword HKLM "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}" "http"  2
+	WriteRegDword HKLM "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}" "https" 2
+
 	WriteRegDword HKCU "${REGPATH_ZONEDOMAINS}\${DOMAIN}"    "http"  2
 	WriteRegDword HKCU "${REGPATH_ZONEDOMAINS}\${DOMAIN}"    "https" 2
 	WriteRegDword HKCU "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}" "http"  2
 	WriteRegDword HKCU "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}" "https" 2
+
+	; Add low rights elevation policy
+	WriteRegDword HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "Policy"  3
+	WriteRegStr   HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "AppPath" "$OUTDIR"
+	WriteRegStr   HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "AppName" "LegacyUpdate.exe"
+
+	${If} ${RunningX64}
+		SetRegView 32
+		WriteRegDword HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "Policy"  3
+		WriteRegStr   HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "AppPath" "$OUTDIR"
+		WriteRegStr   HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}" "AppName" "LegacyUpdate.exe"
+		SetRegView 64
+	${EndIf}
 
 	; Delete LegacyUpdate.dll in System32 from 1.0 installer
 	${If} ${FileExists} $WINDIR\System32\LegacyUpdate.dll
@@ -382,39 +467,9 @@ ${MementoSection} "WUIsBack" LEGACYUPDATE
 		Rename "$PROGRAMFILES32\Legacy Update\Backup" "$PROGRAMFILES64\Legacy Update\Backup"
 		RMDir /r "$PROGRAMFILES32\Legacy Update"
 	${EndIf}
-
-	; Set WSUS server
-	; Check if Schannel is going to work with modern TLS
-	${If} ${AtMostWin8.1}
-		!insertmacro DetailPrint "Checking SSL connectivity..."
-		!insertmacro DownloadRequest "${WSUS_SERVER_HTTPS}/ClientWebService/ping.bin" NONE \
-			`/TIMEOUTCONNECT 0 /TIMEOUTRECONNECT 0`
-		Pop $0
-		Call DownloadWaitSilent
-		Pop $0
-		Pop $0
-
-		${If} $0 == "OK"
-			; HTTPS will work
-			!insertmacro DetailPrint "SSL: Detected working HTTPS!"
-			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
-			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
-			WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
-		${Else}
-			; Probably not supported; use HTTP
-			!insertmacro DetailPrint "SSL: HTTPS is probably not supported. Using HTTP."
-			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
-			WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
-			WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
-		${EndIf}
-		WriteRegDword HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer" 1
-	${EndIf}
-
-	; Restart service
-	!insertmacro RestartWUAUService
 ${MementoSectionEnd}
 
-${MementoSection} "Allow OS Upgrade" ALLOWOSUPGRADE
+${MementoUnselectedSection} "$(SectionAllowOSUpgrade)" ALLOWOSUPGRADE
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}" "AllowOSUpgrade" 1
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}" "DisableOSUpgrade" 0
 	WriteRegDword HKLM "${REGPATH_WUPOLICY}\OSUpgrade" "AllowOSUpgrade" 1
@@ -426,16 +481,44 @@ ${MementoSectionEnd}
 
 ${MementoSectionDone}
 
-Section -Uninstall
-	SetOutPath $InstallDir
+; Uninstaller
+Section "-un.Legacy Update Server" un.WUSERVER
+	; Clear WSUS server
+	${If} ${AtMostWinVista}
+		ReadRegStr $0 HKLM "${REGPATH_WUPOLICY}" "WUServer"
+		${VerbosePrint} "WUServer: $0"
+		${If} $0 == "${WSUS_SERVER}"
+		${OrIf} $0 == "${WSUS_SERVER_HTTPS}"
+			DeleteRegValue HKLM "${REGPATH_WUPOLICY}"   "WUServer"
+			DeleteRegValue HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer"
+		${EndIf}
+
+		ReadRegStr $0 HKLM "${REGPATH_WUPOLICY}" "WUStatusServer"
+		${VerbosePrint} "WUStatusServer: $0"
+		${If} $0 == "${WSUS_SERVER}"
+		${OrIf} $0 == "${WSUS_SERVER_HTTPS}"
+			DeleteRegValue HKLM "${REGPATH_WUPOLICY}"   "WUStatusServer"
+			DeleteRegValue HKLM "${REGPATH_WUAUPOLICY}" "UseWUServer"
+		${EndIf}
+
+		ReadRegStr $0 HKLM "${REGPATH_WU}" "URL"
+		${VerbosePrint} "URL: $0"
+		${If} $0 == "${UPDATE_URL}"
+		${OrIf} $0 == "${UPDATE_URL_HTTPS}"
+			DeleteRegValue HKLM "${REGPATH_WU}" "URL"
+		${EndIf}
+	${EndIf}
+SectionEnd
+
+Section "-un.Legacy Update website" un.ACTIVEX
+	SetOutPath $INSTDIR
 
 	; Delete shortcut
-	${UnpinShortcut} "$COMMONSTARTMENU\${NAME}.lnk"
 	Delete "$COMMONSTARTMENU\${NAME}.lnk"
 
 	; Delete Control Panel entry
 	DeleteRegKey HKLM "${REGPATH_CPLNAMESPACE}"
-	DeleteRegKey HKCR "${REGPATH_CPLCLSID}"
+	DeleteRegKey HKCR "${REGPATH_HKCR_CPLCLSID}"
 
 	; Restore shortcuts
 	${If} ${FileExists} "$OUTDIR\Backup\Windows Update.lnk"
@@ -446,80 +529,84 @@ Section -Uninstall
 		Rename "$OUTDIR\Backup\Microsoft Update.lnk" "$COMMONSTARTMENU\Microsoft Update.lnk"
 	${EndIf}
 
-	; Unregister DLLS
-	${If} ${IsNativeAMD64}
-		!insertmacro RegisterDLL Un x64 "$OUTDIR\LegacyUpdate.dll"
-		!insertmacro RegisterDLL Un x86 "$OUTDIR\LegacyUpdate32.dll"
-	${Else}
-		!insertmacro RegisterDLL Un x86 "$OUTDIR\LegacyUpdate.dll"
+	; Unregister DLLs
+	ExecWait '"$OUTDIR\LegacyUpdate.exe" /unregserver $HWNDPARENT' $0
+	${If} $0 != 0
+		Abort
 	${EndIf}
 
-	; Delete DLLs
-	SetOverwrite try
-	!insertmacro TryDelete "$OUTDIR\LegacyUpdate.dll"
-	!insertmacro TryDelete "$OUTDIR\LegacyUpdate32.dll"
-	SetOverwrite on
-
-	; Clear WSUS server
-	${If} ${AtMostWinVista}
-		DeleteRegValue HKLM "${REGPATH_WUPOLICY}"   "WUServer"
-		DeleteRegValue HKLM "${REGPATH_WUPOLICY}"   "WUStatusServer"
-		DeleteRegValue HKLM "${REGPATH_WUAUPOLICY}" "UseWUStatusServer"
-		DeleteRegValue HKLM "${REGPATH_WU}"         "URL"
-	${EndIf}
+	; Delete files
+	Delete "$OUTDIR\LegacyUpdate.exe"
+	Delete "$OUTDIR\LegacyUpdate.dll"
+	Delete "$OUTDIR\LegacyUpdate32.dll"
 
 	; Remove from trusted sites
+	DeleteRegKey HKLM "${REGPATH_ZONEDOMAINS}\${DOMAIN}"
 	DeleteRegKey HKCU "${REGPATH_ZONEDOMAINS}\${DOMAIN}"
+	DeleteRegKey HKLM "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}"
 	DeleteRegKey HKCU "${REGPATH_ZONEESCDOMAINS}\${DOMAIN}"
+
+	; Remove IE elevation policy
+	DeleteRegKey HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}"
+
+	${If} ${RunningX64}
+		SetRegView 32
+		DeleteRegKey HKLM "${REGPATH_ELEVATIONPOLICY}\${ELEVATIONPOLICY_GUID}"
+		SetRegView 64
+	${EndIf}
 
 	; Restart service
 	!insertmacro RestartWUAUService
+SectionEnd
+
+Section -Uninstall
+	SetOutPath $INSTDIR
 
 	; Delete folders
 	RMDir /r "$OUTDIR"
-	RMDir /r /REBOOTOK "$RunOnceDir"
+	RMDir /r /REBOOTOK "${RUNONCEDIR}"
 
 	; Delete uninstall entry
 	DeleteRegKey HKLM "${REGPATH_UNINSTSUBKEY}"
 SectionEnd
 
-!define DESCRIPTION_REBOOTS "Your computer will restart automatically to complete installation."
-!define DESCRIPTION_SUPEULA "By installing, you are agreeing to the Supplemental End User License Agreement for this update."
-!define DESCRIPTION_MSLT    "By installing, you are agreeing to the Microsoft Software License Terms for this update."
+!macro DESCRIPTION_STRING section
+	!insertmacro MUI_DESCRIPTION_TEXT ${${section}} "$(Section${section}Desc)"
+!macroend
 
 !insertmacro MUI_FUNCTION_DESCRIPTION_BEGIN
-	!insertmacro MUI_DESCRIPTION_TEXT ${W2KSP4}       "Updates Windows 2000 to Service Pack 4, as required to install the Windows Update Agent.$\r$\n${DESCRIPTION_REBOOTS} ${DESCRIPTION_SUPEULA}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${IE6SP1}       "Updates Internet Explorer to 6.0 SP1, as required for Legacy Update.$\r$\n${DESCRIPTION_REBOOTS} ${DESCRIPTION_SUPEULA}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${XPSP3}        "Updates Windows XP to Service Pack 3. Required if you would like to activate Windows online. ${DESCRIPTION_REBOOTS} ${DESCRIPTION_SUPEULA}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${XPESP3}       "Updates Windows XP Embedded to Service Pack 3. Required if you would like to activate Windows online. ${DESCRIPTION_REBOOTS} ${DESCRIPTION_SUPEULA}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WES09}        "Configures Windows to appear as Windows Embedded POSReady 2009 to Windows Update, enabling access to Windows XP security updates released between 2014 and 2019. Please note that Microsoft officially advises against doing this."
-	!insertmacro MUI_DESCRIPTION_TEXT ${2003SP2}      "Updates Windows XP x64 Edition or Windows Server 2003 to Service Pack 2. Required if you would like to activate Windows online. ${DESCRIPTION_REBOOTS} ${DESCRIPTION_SUPEULA}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${VISTASP2}     "Updates Windows Vista or Windows Server 2008 to Service Pack 2, as required to install the Windows Update Agent. ${DESCRIPTION_REBOOTS} ${DESCRIPTION_MSLT}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${VISTASSU}     "Updates Windows Vista or Windows Server 2008 with additional updates required to resolve issues with the Windows Update Agent.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${VISTAIE9}     "Updates Internet Explorer to 9.0.$\r$\n${DESCRIPTION_REBOOTS} ${DESCRIPTION_MSLT}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN7SP1}      "Updates Windows 7 or Windows Server 2008 R2 to Service Pack 1, as required to install the Windows Update Agent. ${DESCRIPTION_REBOOTS} ${DESCRIPTION_MSLT}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN7SSU}      "Updates Windows 7 or Windows Server 2008 R2 with additional updates required to resolve issues with the Windows Update Agent.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN8SSU}      "Updates Windows 8 or Windows Server 2012 with additional updates required to resolve issues with the Windows Update Agent.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN81UPGRADE} "Windows 8 can be updated to Windows 8.1. This process involves a manual download. After Legacy Update setup completes, a Microsoft website will be opened with more information."
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN81UPDATE1} "Updates Windows 8.1 to Update 1, as required to resolve issues with the Windows Update Agent. Also required to upgrade to Windows 10.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN81SSU}     "Updates Windows 8.1 or Windows Server 2012 R2 with additional updates required to resolve issues with the Windows Update Agent.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WHS2011U4}	  "Updates Windows Home Server 2011 to Update Rollup 4 to resolve issues with the Windows Update Agent. Also fixes data corruption problems.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${WUA}          "Updates the Windows Update Agent to the latest version, as required for Legacy Update."
-	!insertmacro MUI_DESCRIPTION_TEXT ${ROOTCERTS}    "Updates the root certificate store to the latest from Microsoft, and enables additional modern security features. Root certificates are used to verify the security of encrypted (https) connections. This fixes connection issues with some websites."
-	!insertmacro MUI_DESCRIPTION_TEXT ${WIN7MU}       "Configures Windows to install updates for Microsoft Office and other Microsoft software."
-	!insertmacro MUI_DESCRIPTION_TEXT ${ACTIVATE}     "Your copy of Windows is not activated. If you update the root certificates store, Windows Product Activation can be completed over the internet. Legacy Update can start the activation wizard after installation so you can activate your copy of Windows."
-	!insertmacro MUI_DESCRIPTION_TEXT ${ALLOWOSUPGRADE} "Forces Windows Update to deliver the Windows 10/11 upgrade.$\r$\n${DESCRIPTION_REBOOTS}"
-	!insertmacro MUI_DESCRIPTION_TEXT ${7ZIP}	   "Installs 7-Zip on Windows 2000 to open zip files.$\r$\n${DESCRIPTION_SUPEULA}"
+	!insertmacro DESCRIPTION_STRING W2KSP4
+	!insertmacro DESCRIPTION_STRING IE6SP1
+	!insertmacro DESCRIPTION_STRING XPSP3
+	!insertmacro DESCRIPTION_STRING XPESP3
+	!insertmacro DESCRIPTION_STRING WES09
+	!insertmacro DESCRIPTION_STRING 2003SP2
+	!insertmacro DESCRIPTION_STRING VISTASP2
+	!insertmacro DESCRIPTION_STRING VISTASSU
+	!insertmacro DESCRIPTION_STRING VISTAIE9
+	!insertmacro DESCRIPTION_STRING WIN7SP1
+	!insertmacro DESCRIPTION_STRING WIN7SSU
+	!insertmacro DESCRIPTION_STRING WIN8SSU
+	!insertmacro DESCRIPTION_STRING WIN81U1
+	!insertmacro DESCRIPTION_STRING WIN81SSU
+	!insertmacro DESCRIPTION_STRING WHS2011U4
+	!insertmacro DESCRIPTION_STRING WUA
+	!insertmacro DESCRIPTION_STRING ROOTCERTS
+	!insertmacro DESCRIPTION_STRING WIN7MU
+	!insertmacro DESCRIPTION_STRING ACTIVATE
+	; !insertmacro DESCRIPTION_STRING LEGACYUPDATE
+	; !insertmacro DESCRIPTION_STRING WUSERVER
+	!insertmacro DESCRIPTION_STRING ALLOWOSUPGRADE
 !insertmacro MUI_FUNCTION_DESCRIPTION_END
 
 Function OnMouseOverSection
 	${If} $0 == ${LEGACYUPDATE}
 		${If} ${AtMostWinXP2003}
-			StrCpy $0 "Installs WUIsBack, enabling access to the full Windows Update interface via the legacyupdate.net website. Windows Update will be configured to use the WUIsBack WSUS server."
+			StrCpy $0 "$(SectionActiveX2KXPDesc)"
 		${ElseIf} ${AtMostWin8.1}
-			StrCpy $0 "Installs WUIsBack, enabling access to the full Windows Update interface via the legacyupdate.net website, and Windows Update Control Panel. Windows Update will be configured to use the WUIsBack WSUS server."
+			StrCpy $0 "$(SectionActiveXVista78Desc)"
 		${Else}
-			StrCpy $0 "Installs WUIsBack, enabling access to the full Windows Update interface via the legacyupdate.net website, and Windows Update Settings page. Windows Update will be configured to use the WUIsBack WSUS server."
+			StrCpy $0 "$(SectionActiveXWin10Desc)"
 		${EndIf}
 		SendMessage $mui.ComponentsPage.DescriptionText ${WM_SETTEXT} 0 "STR:"
 		EnableWindow $mui.ComponentsPage.DescriptionText 1
@@ -527,96 +614,120 @@ Function OnMouseOverSection
 	${EndIf}
 FunctionEnd
 
-!macro Init
-	SetShellVarContext All
-	${If} ${RunningX64}
-		SetRegView 64
-		StrCpy $InstallDir "$PROGRAMFILES64\${NAME}"
-	${Else}
-		StrCpy $InstallDir "$PROGRAMFILES32\${NAME}"
-	${EndIf}
-	StrCpy $RunOnceDir "$COMMONPROGRAMDATA\Legacy Update"
-	!insertmacro EnsureAdminRights
-	SetDetailsPrint listonly
-!macroend
-
 Function .onInit
 	${If} ${IsHelp}
-		MessageBox MB_USERICON \
-			"Usage: setup.exe [/S] [/norestart]$\r$\n\
-			$\r$\n\
-			/S$\tExecutes WUIsBack setup silently.$\r$\n\
-			/norestart$\tDisables automatic restart during installation.$\r$\n\
-			$\r$\n\
-			If no flags are passed, WUIsBack will launch its full user interface.$\r$\n\
-			For more information on these flags, visit legacyupdate.net."
+		MessageBox MB_USERICON "$(MsgBoxUsage)"
 		Quit
 	${EndIf}
 
-	!insertmacro Init
+	SetShellVarContext all
+	${If} ${IsVerbose}
+		SetDetailsPrint both
+	${Else}
+		SetDetailsPrint listonly
+	${EndIf}
+	${If} "$PROGRAMFILES64" != "$PROGRAMFILES32"
+		SetRegView 64
+	${EndIf}
+	!insertmacro EnsureAdminRights
 
 	${If} ${IsRunOnce}
 	${OrIf} ${IsPostInstall}
 		Call OnRunOnceLogon
+	${ElseIfNot} ${AtLeastWin10}
+		GetWinVer $0 Build
+		ReadRegDword $1 HKLM "${REGPATH_CONTROL_WINDOWS}" "CSDVersion"
+		IntOp $1 $1 & 0xFF
+		${If} $1 != 0
+			${VerbosePrint} "Unexpected service pack: $1"
+			StrCpy $1 1
+		${EndIf}
+
+		${If} $0 != ${WINVER_BUILD_2000}
+		${AndIf} $0 != ${WINVER_BUILD_XP2002}
+		${AndIf} $0 != ${WINVER_BUILD_XP2003}
+		${AndIf} $0 != ${WINVER_BUILD_VISTA}
+		${AndIf} $0 != ${WINVER_BUILD_VISTA_SP1}
+		${AndIf} $0 != ${WINVER_BUILD_VISTA_SP2}
+		${AndIf} $0 != ${WINVER_BUILD_VISTA_ESU}
+		${AndIf} $0 != ${WINVER_BUILD_7}
+		${AndIf} $0 != ${WINVER_BUILD_7_SP1}
+		${AndIf} $0 != ${WINVER_BUILD_8}
+		${AndIf} $0 != ${WINVER_BUILD_8.1}
+			${VerbosePrint} "Unexpected build: $0"
+			StrCpy $1 1
+		${EndIf}
+
+		${If} $1 == 1
+			MessageBox MB_USERICON|MB_OKCANCEL "$(MsgBoxBetaOS)" /SD IDOK \
+				IDOK +2
+			Quit
+		${EndIf}
+	${EndIf}
+
+	; Check for compatibility mode (GetVersionEx() and RtlGetNtVersionNumbers() disagreeing)
+	GetWinVer $0 Major
+	GetWinVer $1 Minor
+	GetWinVer $2 Build
+	System::Call '${RtlGetNtVersionNumbers}(.r3, .r4, .r5)'
+	IntOp $5 $5 & 0xFFFF
+
+	; Detect NNN4NT5
+	ReadEnvStr $6 "_COMPAT_VER_NNN"
+	${If} $6 != ""
+		StrCpy $3 "?"
+	${EndIf}
+
+	; Windows 2000 lacks RtlGetNtVersionNumbers(), but there is no compatibility mode anyway.
+	${If} "$3.$4.$5" != "0.0.0"
+	${AndIf} "$0.$1.$2" != "$3.$4.$5"
+		${VerbosePrint} "Compatibility mode detected. Fake: $0.$1.$2, Actual: $3.$4.$5"
+		MessageBox MB_USERICON "$(MsgBoxCompatMode)" /SD IDOK
+		SetErrorLevel 1
+		Quit
 	${EndIf}
 
 	SetOutPath $PLUGINSDIR
 	File Patches.ini
 
-	SetOutPath $RunOnceDir
+	SetOutPath "${RUNONCEDIR}"
 
 	${MementoSectionRestore}
 
 	${If} ${IsWin2000}
-		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
 		; Determine whether Win2k prereqs need to be installed
-		Call NeedsW2KSP4
-		Call NeedsKB835732
-		Pop $0
-		Pop $1
-		${If} $0 == 0
-		${AndIf} $1 == 0
+		${IfNot} ${NeedsPatch} W2KSP4
+		${AndIfNot} ${NeedsPatch} W2KUR1
 			!insertmacro RemoveSection ${W2KSP4}
 		${EndIf}
 
-		; Check if system needs Internet Explorer 6
-		Call NeedsIE6
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} IE6
 			!insertmacro RemoveSection ${IE6SP1}
 		${EndIf}
 
-		; Check if 7-Zip is installed
-		${If} ${FileExists} "$PROGRAMFILES\7-Zip\7zFM.exe"
-			!insertmacro RemoveSection ${7ZIP}
+		; Handle 2000 Datacenter Server
+		${If} ${IsDatacenter}
+			!insertmacro UnselectSection ${LEGACYUPDATE}
 		${EndIf}
 	${Else}
 		!insertmacro RemoveSection ${W2KSP4}
 		!insertmacro RemoveSection ${IE6SP1}
-		!insertmacro RemoveSection ${7ZIP}
 	${EndIf}
 
 	${If} ${IsWinXP2002}
-		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
 		${If} ${IsEmbedded}
 			; Determine whether XP Embedded prereqs need to be installed
 			; Windows XP Embedded (version 2001), including FLP and WEPOS, has a different service pack
 			!insertmacro RemoveSection ${XPSP3}
 
-			Call NeedsXPESP3
-			Pop $0
-			${If} $0 == 0
+			${IfNot} ${NeedsPatch} XPESP3
 				!insertmacro RemoveSection ${XPESP3}
 			${EndIf}
-		${EndIf}
-
-		${IfNot} ${IsEmbedded}
+		${Else}
 			; Determine whether XP prereqs need to be installed
 			!insertmacro RemoveSection ${XPESP3}
 
-			Call NeedsXPSP3
-			Pop $0
-			${If} $0 == 0
+			${IfNot} ${NeedsPatch} XPSP3
 				!insertmacro RemoveSection ${XPSP3}
 			${EndIf}
 		${EndIf}
@@ -632,11 +743,8 @@ Function .onInit
 	${EndIf}
 
 	${If} ${IsWinXP2003}
-		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
 		; Determine whether 2003 prereqs need to be installed
-		Call Needs2003SP2
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} 2003SP2
 			!insertmacro RemoveSection ${2003SP2}
 		${EndIf}
 	${Else}
@@ -644,23 +752,16 @@ Function .onInit
 	${EndIf}
 
 	${If} ${IsWinVista}
-		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
 		; Determine whether Vista prereqs need to be installed
-		Call NeedsVistaSP2
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} VistaSP2
 			!insertmacro RemoveSection ${VISTASP2}
 		${EndIf}
 
-		Call NeedsVistaPostSP2
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} VistaPostSP2
 			!insertmacro RemoveSection ${VISTASSU}
 		${EndIf}
 
-		Call NeedsIE9
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} IE9
 			!insertmacro RemoveSection ${VISTAIE9}
 		${EndIf}
 	${Else}
@@ -671,25 +772,16 @@ Function .onInit
 
 	${If} ${IsWin7}
 		; Determine whether 7 prereqs need to be installed
-		Call NeedsWin7SP1
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} Win7SP1
 			!insertmacro RemoveSection ${WIN7SP1}
 		${EndIf}
 
-		${If} ${IsHomeServer}
-			Call NeedsKB2757011
-			Pop $0
-			${If} $0 == 0
-				!insertmacro RemoveSection ${WHS2011U4}
-			${EndIf}
-		${Else}
+		${IfNot} ${IsHomeServer}
+		${OrIfNot} ${NeedsPatch} KB2757011
 			!insertmacro RemoveSection ${WHS2011U4}
 		${EndIf}
 
-		Call NeedsWin7SHA2
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} Win7PostSP1
 			!insertmacro RemoveSection ${WIN7SSU}
 		${EndIf}
 
@@ -707,35 +799,24 @@ Function .onInit
 
 	${If} ${IsWin8}
 		; Determine whether 8 prereqs need to be installed
-		${IfNot} ${IsWin8}
-			!insertmacro RemoveSection ${WIN81UPGRADE}
-		${EndIf}
-
-		Call NeedsKB4598297
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} KB4598297
 			!insertmacro RemoveSection ${WIN8SSU}
 		${EndIf}
 	${Else}
-		!insertmacro RemoveSection ${WIN81UPGRADE}
 		!insertmacro RemoveSection ${WIN8SSU}
 	${EndIf}
 
 	${If} ${IsWin8.1}
 		; Determine whether 8.1 prereqs need to be installed
-		Call NeedsWin81Update1
-		Pop $0
-		${If} $0 == 0
-			!insertmacro RemoveSection ${WIN81UPDATE1}
+		${IfNot} ${NeedsPatch} Win81Update1
+			!insertmacro RemoveSection ${WIN81U1}
 		${EndIf}
 
-		Call NeedsKB3021910
-		Pop $0
-		${If} $0 == 0
+		${IfNot} ${NeedsPatch} KB3021910
 			!insertmacro RemoveSection ${WIN81SSU}
 		${EndIf}
 	${Else}
-		!insertmacro RemoveSection ${WIN81UPDATE1}
+		!insertmacro RemoveSection ${WIN81U1}
 		!insertmacro RemoveSection ${WIN81SSU}
 	${EndIf}
 
@@ -744,33 +825,42 @@ Function .onInit
 		!insertmacro RemoveSection ${WUA}
 	${EndIf}
 
-	${If} ${IsWinXP2002}
-	${OrIf} ${IsWinXP2003}
+	${If} ${AtLeastWinXP2002}
+	${AndIf} ${AtMostWin8.1}
 		; Check if the OS needs activation
-		LegacyUpdateNSIS::IsProcessRunning "wpabaln.exe"
+		LegacyUpdateNSIS::IsActivated
 		Pop $0
-		${If} $0 == 0
+		${If} $0 == 1
 			!insertmacro RemoveSection ${ACTIVATE}
 		${EndIf}
 	${Else}
 		!insertmacro RemoveSection ${ACTIVATE}
 	${EndIf}
 
+	; ${IfNot} ${AtMostWinVista}
+	; 	!insertmacro RemoveSection ${LEGACYUPDATE}
+	; ${EndIf}
+
 	; Try not to be too intrusive on Windows 10 and newer, which are (for now) fine
 	${If} ${AtLeastWin10}
+		!insertmacro RemoveSection ${ROOTCERTS}
+	${EndIf}
+
+	${IfNot} ${AtLeastWin7}
 		!insertmacro RemoveSection ${ALLOWOSUPGRADE}
 	${EndIf}
 FunctionEnd
 
 Function ComponentsPageCheck
-	; Skip the page if we're being launched via RunOnce
+	; Skip the page if we're being launched with /runonce, /postinstall, or /passive
 	${If} ${IsRunOnce}
 	${OrIf} ${IsPostInstall}
+	${OrIf} ${IsPassive}
 		Abort
 	${EndIf}
 
 	; Skip if installer was invoked by IE, and all prerequisites are installed
-	${If} ${IsActiveXInstall}
+	${If} ${IsActiveX}
 	${AndIf} ${SectionIsSelected} ${LEGACYUPDATE}
 		StrCpy $1 0
 		${For} $0 ${PREREQS_START} ${PREREQS_END}
@@ -794,14 +884,14 @@ Function PreDownload
 	; Win2k
 	${If} ${IsWin2000}
 		Call DownloadW2KSP4
-		Call DownloadKB835732
+		Call DownloadW2KUR1
 		Call DownloadIE6
 	${EndIf}
 
 	; XP 2002
 	${If} ${IsWinXP2002}
 	${AndIf} ${SectionIsSelected} ${XPSP3}
-		Call DownloadXPSP2
+		Call DownloadXPSP1a
 		Call DownloadXPSP3
 	${EndIf}
 
@@ -840,7 +930,7 @@ Function PreDownload
 		${Else}
 			Call DownloadWin7SP1
 		${EndIf}
-		Call DownloadKB3102810
+
 		Call DownloadKB3138612
 		Call DownloadKB4474419
 		Call DownloadKB4490628
@@ -866,17 +956,19 @@ Function PreDownload
 	; General
 	Call DownloadWUA
 
-	${If} ${SectionIsSelected} ${ROOTCERTS}
+	${If} ${AtMostWin8.1}
+	${AndIf} ${SectionIsSelected} ${ROOTCERTS}
 		Call DownloadRoots
 	${EndIf}
 FunctionEnd
 
 Function PostInstall
 	; Handle first run flag if needed
-	${If} ${FileExists} "$InstallDir\LegacyUpdate.dll"
+	${If} ${FileExists} "$INSTDIR\LegacyUpdate.exe"
+		ClearErrors
 		ReadRegDword $0 HKLM "${REGPATH_LEGACYUPDATE_SETUP}" "ActiveXInstalled"
 		${If} ${Errors}
-			StrCpy $0 "firstrun"
+			StrCpy $0 "/firstrun"
 		${Else}
 			StrCpy $0 ""
 		${EndIf}
@@ -885,32 +977,39 @@ Function PostInstall
 
 	${IfNot} ${Silent}
 	${AndIfNot} ${IsRunOnce}
-		${IfNot} ${IsActiveXInstall}
-		${AndIf} ${SectionIsSelected} ${LEGACYUPDATE}
-			Exec '$SYSDIR\rundll32.exe "$InstallDir\LegacyUpdate.dll",LaunchUpdateSite $0'
+		${If} ${FileExists} "$INSTDIR\LegacyUpdate.exe"
+			Exec '"$INSTDIR\LegacyUpdate.exe" /launch $0'
+		${ElseIf} ${AtLeastWin10}
+			ExecShell "" "ms-settings:windowsupdate"
 		${ElseIf} ${AtLeastWinVista}
-			Exec '$SYSDIR\wuauclt.exe /ShowWUAutoScan'
+			Exec '"$WINDIR\system32\wuauclt.exe" /ShowWUAutoScan'
 		${EndIf}
 
-		; Launch XP activation wizard if requested by the user
+		; Launch activation wizard if requested by the user
 		${If} ${SectionIsSelected} ${ACTIVATE}
-			ExecShell "" "$WINDIR\system32\oobe\msoobe.exe" "/a"
-		${EndIf}
-
-		; Launch Windows 8.1 upgrade site if requested by the user
-		${If} ${SectionIsSelected} ${WIN81UPGRADE}
-			ExecShell "" "${WIN81UPGRADE_URL}"
+			${DisableX64FSRedirection}
+			${If} ${AtLeastWinVista}
+				Exec '"$WINDIR\system32\slui.exe"'
+			${Else}
+				Exec '"$WINDIR\system32\oobe\msoobe.exe" /a'
+			${EndIf}
+			${EnableX64FSRedirection}
 		${EndIf}
 	${EndIf}
 FunctionEnd
 
 Function CleanUp
+	; Called only after all tasks have completed
 	Call CleanUpRunOnce
 	!insertmacro InhibitSleep 0
 
+	${If} ${IsRunOnce}
+		Call OnRunOnceDone
+	${EndIf}
+
 	${If} ${IsPostInstall}
 	${OrIfNot} ${RebootFlag}
-		RMDir /r /REBOOTOK "$RunOnceDir"
+		Call CleanUpRunOnceFinal
 	${EndIf}
 FunctionEnd
 
@@ -926,28 +1025,55 @@ Function .onInstSuccess
 FunctionEnd
 
 Function .onInstFailed
+	${MementoSectionSave}
 	Call CleanUp
 FunctionEnd
 
 Function .onSelChange
 	${If} ${SectionIsSelected} ${WES09}
-		; Check for SSE2.
-		System::Call 'kernel32::IsProcessorFeaturePresent(i ${PF_XMMI64_INSTRUCTIONS_AVAILABLE}) i .r0'
+		; Check for SSE2
+		System::Call '${IsProcessorFeaturePresent}(${PF_XMMI64_INSTRUCTIONS_AVAILABLE}) .r0'
 		${If} $0 == 0
-			MessageBox MB_USERICON "Your processor does not support the Streaming SIMD Extensions 2 (SSE2) instruction set, which is required to install Windows Embedded 2009 updates released after May 2018. Processors that initially implemented SSE2 instructions include the Intel Pentium 4, Pentium M, and AMD Athlon 64.$\r$\n$\r$\nTo protect your Windows installation from becoming corrupted by incompatible updates, this option will be disabled." /SD IDOK
+			MessageBox MB_USERICON "$(MsgBoxWES09NotSSE2)" /SD IDOK
 			!insertmacro UnselectSection ${WES09}
+		${EndIf}
+	${ElseIf} ${SectionIsSelected} ${ACTIVATE}
+		; Make sure the service pack prerequisite is selected
+		${If} ${IsWinXP2002}
+		${AndIfNot} ${AtLeastServicePack} 3
+		${AndIfNot} ${SectionIsSelected} ${XPSP3}
+			MessageBox MB_USERICON "$(MsgBoxActivateXP2002NotSP3)" /SD IDOK
+			!insertmacro SelectSection ${XPSP3}
+		${ElseIf} ${IsWinXP2003}
+		${AndIfNot} ${AtLeastServicePack} 2
+		${AndIfNot} ${SectionIsSelected} ${2003SP2}
+			MessageBox MB_USERICON "$(MsgBoxActivateXP2003NotSP2)" /SD IDOK
+			!insertmacro SelectSection ${2003SP2}
+		${EndIf}
+	${ElseIf} ${SectionIsSelected} ${LEGACYUPDATE}
+		; Handle 2000 Datacenter Server
+		${If} ${IsWin2000}
+		${AndIf} ${IsDatacenter}
+			MessageBox MB_USERICON "$(MsgBoxWUA2000Datacenter)" /SD IDOK
+			!insertmacro UnselectSection ${LEGACYUPDATE}
 		${EndIf}
 	${EndIf}
 FunctionEnd
 
 Function un.onInit
-	!insertmacro Init
+	SetShellVarContext all
+	${If} ${IsVerbose}
+		SetDetailsPrint both
+	${Else}
+		SetDetailsPrint listonly
+	${EndIf}
+
+	; Hack to avoid bundling System.dll in uninstaller
+	${If} "$PROGRAMFILES64" != "$PROGRAMFILES32"
+		SetRegView 64
+	${EndIf}
 FunctionEnd
 
 Function un.onUninstSuccess
-	!insertmacro DetailPrint "Done"
-	Call un.RebootIfRequired
-	${IfNot} ${RebootFlag}
-		Quit
-	${EndIf}
+	Quit
 FunctionEnd

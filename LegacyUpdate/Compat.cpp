@@ -2,15 +2,22 @@
 #include <comdef.h>
 #include "Utils.h"
 
-typedef BOOL (WINAPI *_Wow64DisableWow64FsRedirection)(PVOID *OldValue);
-typedef BOOL (WINAPI *_Wow64RevertWow64FsRedirection)(PVOID OldValue);
+#ifndef PROCESS_PER_MONITOR_DPI_AWARE
+typedef int PROCESS_DPI_AWARENESS;
+#define PROCESS_PER_MONITOR_DPI_AWARE 2
+#endif
+
+#ifndef DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2
+typedef int DPI_AWARENESS_CONTEXT;
+#define DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2 ((DPI_AWARENESS_CONTEXT)-4)
+#endif
+
 typedef BOOL (WINAPI *_GetProductInfo)(DWORD, DWORD, DWORD, DWORD, PDWORD);
 
-// XP+
-_Wow64DisableWow64FsRedirection $Wow64DisableWow64FsRedirection = (_Wow64DisableWow64FsRedirection)GetProcAddress(GetModuleHandle(L"kernel32.dll"), "Wow64DisableWow64FsRedirection");
-_Wow64RevertWow64FsRedirection $Wow64RevertWow64FsRedirection = (_Wow64RevertWow64FsRedirection)GetProcAddress(GetModuleHandle(L"kernel32.dll"), "Wow64RevertWow64FsRedirection");
+typedef BOOL (WINAPI *_SetProcessDpiAwarenessContext)(DPI_AWARENESS_CONTEXT);
+typedef HRESULT (WINAPI *_SetProcessDpiAwareness)(PROCESS_DPI_AWARENESS);
+typedef void (WINAPI *_SetProcessDPIAware)();
 
-// Vista+
 _GetProductInfo $GetProductInfo = (_GetProductInfo)GetProcAddress(GetModuleHandle(L"kernel32.dll"), "GetProductInfo");
 
 BOOL GetVistaProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD dwSpMajorVersion, DWORD dwSpMinorVersion, PDWORD pdwReturnedProductType) {
@@ -22,18 +29,25 @@ BOOL GetVistaProductInfo(DWORD dwOSMajorVersion, DWORD dwOSMinorVersion, DWORD d
 	}
 }
 
-BOOL DisableWow64FsRedirection(PVOID *OldValue) {
-	if ($Wow64DisableWow64FsRedirection) {
-		return $Wow64DisableWow64FsRedirection(OldValue);
-	} else {
-		return TRUE;
+void BecomeDPIAware() {
+	// Make the process DPI-aware... hopefully
+	// Windows 10 1703+ per-monitor v2
+	_SetProcessDpiAwarenessContext $SetProcessDpiAwarenessContext = (_SetProcessDpiAwarenessContext)GetProcAddress(LoadLibrary(L"user32.dll"), "SetProcessDpiAwarenessContext");
+	if ($SetProcessDpiAwarenessContext) {
+		$SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+		return;
 	}
-}
 
-BOOL RevertWow64FsRedirection(PVOID OldValue) {
-	if ($Wow64RevertWow64FsRedirection) {
-		return $Wow64RevertWow64FsRedirection(OldValue);
-	} else {
-		return TRUE;
+	// Windows 8.1 - 10 1607 per-monitor v1
+	_SetProcessDpiAwareness $SetProcessDpiAwareness = (_SetProcessDpiAwareness)GetProcAddress(LoadLibrary(L"shcore.dll"), "SetProcessDpiAwareness");
+	if ($SetProcessDpiAwareness) {
+		$SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+		return;
+	}
+
+	// Windows Vista - 8
+	_SetProcessDPIAware $SetProcessDPIAware = (_SetProcessDPIAware)GetProcAddress(LoadLibrary(L"user32.dll"), "SetProcessDPIAware");
+	if ($SetProcessDPIAware) {
+		$SetProcessDPIAware();
 	}
 }

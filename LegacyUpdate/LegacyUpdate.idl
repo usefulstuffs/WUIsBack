@@ -8,8 +8,9 @@
 #include <idispids.h>
 import "oaidl.idl";
 import "ocidl.idl";
+import "wuapi.idl";
 
-typedef enum {
+typedef enum OSVersionField {
 	e_majorVer = 0,
 	e_minorVer = 1,
 	e_buildNumber = 2,
@@ -27,7 +28,7 @@ typedef enum {
 	e_maxOSVersionFieldValue = 13
 } OSVersionField;
 
-typedef enum {
+typedef enum UserType {
 	e_nonAdmin = 0,
 	e_admin = 2,
 	e_elevated = 3
@@ -47,6 +48,7 @@ interface ILegacyUpdateCtrl : IDispatch {
 	[id(3)]  HRESULT GetOSVersionInfo(OSVersionField osField, LONG systemMetric, [out, retval] VARIANT *retval);
 	[id(14)] HRESULT RequestElevation(void);
 	[id(4)]  HRESULT CreateObject(BSTR progID, [out, retval] IDispatch **retval);
+	[id(15)] HRESULT SetBrowserHwnd(IUpdateInstaller *installer);
 	[id(5)]  HRESULT GetUserType([out, retval] UserType *retval);
 	[id(8)]  HRESULT RebootIfRequired(void);
 	[id(9)]  HRESULT ViewWindowsUpdateLog(void);
@@ -83,6 +85,7 @@ interface IProgressBarControl : IDispatch
 interface IElevationHelper : IDispatch
 {
 	[id(1)] HRESULT CreateObject(BSTR progID, [out, retval] IDispatch **retval);
+	[id(2)] HRESULT Reboot(void);
 };
 
 [

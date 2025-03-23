@@ -1,40 +1,51 @@
 Function DetermineWUAVersion
-	; Hardcoded special case for XP Home/Embedded SP3, because the WUA 7.6.7600.256 setup SFX is
-	; seriously broken on it, potentially causing an unbootable Windows install due to it entering an
-	; infinite loop of creating folders in the root of C:.
-	${If} ${IsWinXP2002}
-	${AndIf} ${AtLeastServicePack} 3
-	${AndIf} ${IsHomeEdition}
-	${OrIf} ${IsEmbedded}
-		StrCpy $1 "5.1.3-home"
-	${Else}
-		GetWinVer $1 Major
-		GetWinVer $2 Minor
-		GetWinVer $3 ServicePack
-		StrCpy $1 "$1.$2.$3"
-	${EndIf}
-
-	StrCpy $0 ""
-
-	ClearErrors
-	ReadINIStr $2 $PLUGINSDIR\Patches.ini WUA $1
-	${If} ${Errors}
+	; WUA refuses to install on 2000 Datacenter Server. Maybe we can hack around this in future.
+	${If} ${IsWin2000}
+	${AndIf} ${IsDatacenter}
+		StrCpy $0 ""
 		Return
 	${EndIf}
 
-	${GetFileVersion} "$SYSDIR\wuapi.dll" $1
+	GetWinVer $1 Major
+	GetWinVer $2 Minor
+	GetWinVer $3 ServicePack
+	StrCpy $1 "$1.$2.$3"
+
+	; Hardcoded special case for XP Home/Embedded SP3, because the WUA 7.6.7600.256 setup SFX is seriously broken on it,
+	; potentially causing an unbootable Windows install due to it entering an infinite loop of creating folders in the
+	; root of C:.
+	${If} $1 == "5.1.3"
+		${If} ${IsHomeEdition}
+		${OrIf} ${IsEmbedded}
+			StrCpy $1 "$1-home"
+		${EndIf}
+	${EndIf}
+
+	StrCpy $0 ""
+	ReadINIStr $2 $PLUGINSDIR\Patches.ini WUA $1
+	${If} $2 == ""
+		Return
+	${EndIf}
+
+	${GetFileVersion} "$SYSDIR\wuaueng.dll" $1
 	${VersionCompare} $1 $2 $3
 	${If} $3 == 2
 		Call GetArch
 		Pop $0
 		ReadINIStr $0 $PLUGINSDIR\Patches.ini WUA $2-$0
+		${If} $0 == ""
+			Return
+		${EndIf}
+
+		ReadINIStr $1 $PLUGINSDIR\Patches.ini WUA Prefix
+		StrCpy $0 "$1$0"
 	${EndIf}
 FunctionEnd
 
 Function DownloadWUA
 	Call DetermineWUAVersion
 	${If} $0 != ""
-		!insertmacro Download "Windows Update Agent" "$0" "WindowsUpdateAgent.exe" 1
+		!insertmacro Download "$(WUA)" "$0" "WindowsUpdateAgent.exe" 1
 	${EndIf}
 FunctionEnd
 
@@ -42,6 +53,6 @@ Function InstallWUA
 	Call DetermineWUAVersion
 	${If} $0 != ""
 		Call DownloadWUA
-		!insertmacro Install "Windows Update Agent" "WindowsUpdateAgent.exe" "/quiet /norestart"
+		!insertmacro Install "$(WUA)" "WindowsUpdateAgent.exe" "/quiet /norestart"
 	${EndIf}
 FunctionEnd

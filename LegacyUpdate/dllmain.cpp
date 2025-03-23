@@ -1,10 +1,14 @@
 // dllmain.cpp : Implementation of DLL Exports.
 
 #include "stdafx.h"
-#include "resource.h"
 #include "LegacyUpdate_i.h"
 #include "dllmain.h"
+
+#include <strsafe.h>
+
 #include "dlldatax.h"
+#include "Registry.h"
+#include "LegacyUpdate.h"
 
 CLegacyUpdateModule _AtlModule;
 HINSTANCE g_hInstance;
@@ -17,13 +21,13 @@ extern "C" BOOL WINAPI DllMain(HINSTANCE hInstance, DWORD dwReason, LPVOID lpRes
 #endif
 
 	switch (dwReason) {
-		case DLL_PROCESS_ATTACH:
-			g_hInstance = hInstance;
-			break;
+	case DLL_PROCESS_ATTACH:
+		g_hInstance = hInstance;
+		break;
 
-		case DLL_PROCESS_DETACH:
-			g_hInstance = NULL;
-			break;
+	case DLL_PROCESS_DETACH:
+		g_hInstance = NULL;
+		break;
 	}
 
 	return _AtlModule.DllMain(dwReason, lpReserved);
@@ -57,10 +61,42 @@ STDAPI DllGetClassObject(REFCLSID rclsid, REFIID riid, LPVOID *ppv) {
 STDAPI DllRegisterServer(void) {
 	// registers object, typelib and all interfaces in typelib
 	HRESULT hr = _AtlModule.DllRegisterServer();
-#ifdef _MERGE_PROXYSTUB
-	if (FAILED(hr)) {
+	if (!SUCCEEDED(hr)) {
 		return hr;
 	}
+
+	// Fix the icon path
+	HKEY subkey;
+	hr = HRESULT_FROM_WIN32(RegOpenKeyEx(HKEY_CLASSES_ROOT, L"CLSID\\{84F517AD-6438-478F-BEA8-F0B808DC257F}\\Elevation", 0, KEY_WRITE, &subkey));
+	if (!SUCCEEDED(hr)) {
+		return hr;
+	}
+
+	LPWSTR installPath;
+	hr = GetInstallPath(&installPath);
+	if (!SUCCEEDED(hr)) {
+		return hr;
+	}
+
+	WCHAR iconRef[512];
+	hr = StringCchPrintf((LPWSTR)&iconRef, ARRAYSIZE(iconRef), L"@%ls\\LegacyUpdate.exe,-100", installPath);
+	LocalFree(installPath);
+	if (!SUCCEEDED(hr)) {
+		return hr;
+	}
+
+	hr = HRESULT_FROM_WIN32(RegSetValueEx(subkey, L"IconReference", 0, REG_SZ, (LPBYTE)iconRef, (DWORD)(lstrlen(iconRef) + 1) * sizeof(TCHAR)));
+	if (!SUCCEEDED(hr)) {
+		return hr;
+	}
+
+	hr = RegCloseKey(subkey);
+
+#ifdef _MERGE_PROXYSTUB
+	if (!SUCCEEDED(hr)) {
+		return hr;
+	}
+
 	hr = PrxDllRegisterServer();
 #endif
 	return hr;

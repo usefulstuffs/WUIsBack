@@ -34,9 +34,6 @@
       <Filter>Resource Files</Filter>
     </None>
     <None Include="ProgressBarControl.html" />
-    <None Include="CplTasks.xml">
-      <Filter>Resource Files</Filter>
-    </None>
     <None Include="ElevationHelper.rgs">
       <Filter>Resource Files</Filter>
     </None>
@@ -72,10 +69,22 @@
     <ClCompile Include="ElevationHelper.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\VersionInfo.cpp">
+    <ClCompile Include="..\shared\WMI.c">
       <Filter>Shared</Filter>
     </ClCompile>
-    <ClCompile Include="..\shared\WMI.cpp">
+    <ClCompile Include="..\shared\Registry.c">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\VersionInfo.c">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\HResult.c">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\Exec.c">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\shared\LegacyUpdate.c">
       <Filter>Shared</Filter>
     </ClCompile>
   </ItemGroup>
@@ -122,6 +131,21 @@
     <ClInclude Include="..\shared\VersionInfo.h">
       <Filter>Shared</Filter>
     </ClInclude>
+    <ClInclude Include="..\shared\HResult.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\wuerror.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="IUpdateInstaller4.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\Exec.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\shared\LegacyUpdate.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="LegacyUpdate.rc">
@@ -132,5 +156,13 @@
     <Midl Include="LegacyUpdate.idl">
       <Filter>Source Files</Filter>
     </Midl>
+    <Midl Include="wuapi.idl">
+      <Filter>Source Files</Filter>
+    </Midl>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="wuerror.mc">
+      <Filter>Resource Files</Filter>
+    </CustomBuild>
   </ItemGroup>
 </Project>

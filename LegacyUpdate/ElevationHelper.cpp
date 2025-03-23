@@ -1,6 +1,8 @@
 // ElevationHelper.cpp : Implementation of CElevationHelper
 #include "stdafx.h"
+#include "Compat.h"
 #include "ElevationHelper.h"
+#include "HResult.h"
 #include "Utils.h"
 #include <strsafe.h>
 
@@ -8,18 +10,18 @@ const BSTR permittedProgIDs[] = {
 	L"Microsoft.Update.",
 	NULL
 };
-const int permittedProgIDsMax = 1;
 
 BOOL ProgIDIsPermitted(PWSTR progID) {
 	if (progID == NULL) {
 		return FALSE;
 	}
 
-	for (int i = 0; i < permittedProgIDsMax; i++) {
+	for (int i = 0; permittedProgIDs[i] != NULL; i++) {
 		if (wcsncmp(progID, permittedProgIDs[i], wcslen(permittedProgIDs[i])) == 0) {
 			return TRUE;
 		}
 	}
+
 	return FALSE;
 }
 
@@ -41,7 +43,11 @@ STDMETHODIMP CoCreateInstanceAsAdmin(HWND hwnd, __in REFCLSID rclsid, __in REFII
 	return CoGetObject(monikerName, &bindOpts, riid, ppv);
 }
 
-HRESULT CElevationHelper::CreateObject(BSTR progID, IDispatch **retval) {
+CElevationHelper::CElevationHelper() {
+	BecomeDPIAware();
+}
+
+STDMETHODIMP CElevationHelper::CreateObject(BSTR progID, IDispatch **retval) {
 	if (progID == NULL) {
 		return E_INVALIDARG;
 	}
@@ -71,4 +77,8 @@ end:
 		TRACE("CreateObject(%ls) failed: %ls\n", progID, GetMessageForHresult(hr));
 	}
 	return hr;
+}
+
+STDMETHODIMP CElevationHelper::Reboot(void) {
+	return ::Reboot();
 }

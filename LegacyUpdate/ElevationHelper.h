@@ -17,7 +17,7 @@ class ATL_NO_VTABLE CElevationHelper :
 	public IDispatchImpl<IElevationHelper, &IID_IElevationHelper, &LIBID_LegacyUpdateLib, /*wMajor =*/ 1, /*wMinor =*/ 0> {
 
 public:
-	CElevationHelper() {}
+	CElevationHelper();
 
 	DECLARE_REGISTRY_RESOURCEID(IDR_ELEVATIONHELPER)
 
@@ -39,6 +39,7 @@ public:
 	void FinalRelease() {}
 
 	STDMETHODIMP CreateObject(BSTR progID, IDispatch **retval);
+	STDMETHODIMP Reboot(void);
 };
 
 OBJECT_ENTRY_AUTO(__uuidof(ElevationHelper), CElevationHelper)

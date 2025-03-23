@@ -1,17 +1,19 @@
+export CI ?= 0
 export SIGN ?= 0
-
-SUBPROJECTS = LegacyUpdate nsisplugin setup
+export DEBUG ?= 1
 
 all:
-	set -e; \
-	for i in $(SUBPROJECTS); do \
-		$(MAKE) -C $$i; \
-	done
+ifeq ($(DEBUG),0)
+	+$(MAKE) clean
+endif
+
+	+$(MAKE) -C LegacyUpdate
+	+$(MAKE) -C launcher
+	+$(MAKE) -C setup
 
 clean:
-	set -e; \
-	for i in $(SUBPROJECTS); do \
-		$(MAKE) -C $$i clean; \
-	done
+	+$(MAKE) -C LegacyUpdate clean
+	+$(MAKE) -C launcher clean
+	+$(MAKE) -C setup clean
 
 .PHONY: all clean
