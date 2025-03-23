@@ -115,8 +115,8 @@ Var /GLOBAL UninstallInstalled
 !include Strings.nsh
 
 ; Uncomment lines below to enable code signing when compiling under Windows
-; !uninstfinalize 'sign.cmd "certPath" certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
-; !finalize 'sign.cmd "certPath" certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
+; !uninstfinalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
+; !finalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
 
 !macro RestartWUAUService
 	${DetailPrint} "$(StatusRestartingWUAU)"
