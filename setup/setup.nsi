@@ -686,7 +686,13 @@ Function .onInit
 		SetErrorLevel 1
 		Quit
 	${EndIf}
-
+  ${If} ${FileExists} "$OUTDIR\Uninstall.exe"
+		IfSilent +3
+		Exec '"$OUTDIR\Uninstall.exe"'
+		Quit
+		Exec '"$OUTDIR\Uninstall.exe" /S'
+		Quit
+	${EndIf}
 	SetOutPath $PLUGINSDIR
 	File Patches.ini
 
