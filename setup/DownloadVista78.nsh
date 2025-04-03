@@ -82,6 +82,7 @@ FunctionEnd
 !insertmacro MSUHandler "KB4493730" "2019-04 $(SSU) for Windows $(SRV) 2008"
 
 ; Windows 7 Servicing Stack Update
+!insertmacro MSUHandler "KB3102810" "Update for Windows 7"
 !insertmacro MSUHandler "KB3138612" "2016-03 $(SSU) for Windows 7"
 !insertmacro MSUHandler "KB4474419" "$(SHA2) for Windows 7"
 !insertmacro MSUHandler "KB4490628" "2019-03 $(SSU) for Windows 7"
