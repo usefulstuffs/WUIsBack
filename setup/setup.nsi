@@ -250,6 +250,7 @@ SectionEnd
 
 Section "$(SectionSSU)" WIN7SSU
 	SectionIn Ro
+	Call InstallKB3102810
 	Call InstallKB3138612
 	Call InstallKB4474419
 	Call InstallKB4490628
@@ -686,7 +687,7 @@ Function .onInit
 		SetErrorLevel 1
 		Quit
 	${EndIf}
-  ${If} ${FileExists} "$OUTDIR\Uninstall.exe"
+	${If} ${FileExists} "$OUTDIR\Uninstall.exe"
 		IfSilent +3
 		Exec '"$OUTDIR\Uninstall.exe"'
 		Quit
