@@ -24,10 +24,10 @@ jobs:
         md .\Release
         md .\x64\Release
         md .\launcher\obj
-        iwr https://ftp-vichingo455.duckdns.org/pub/WUIsBack/.github/LegacyUpdate32.dll -outfile '.\Release\LegacyUpdate.dll'
-        iwr https://ftp-vichingo455.duckdns.org/pub/WUIsBack/.github/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
-        iwr https://ftp-vichingo455.duckdns.org/pub/WUIsBack/.github/LegacyUpdate32.exe -outfile '.\launcher\obj\LegacyUpdate32.exe'
-        iwr https://ftp-vichingo455.duckdns.org/pub/WUIsBack/.github/LegacyUpdate64.exe -outfile '.\launcher\obj\LegacyUpdate64.exe'
+        iwr https://ftp.vichingo455.freeddns.org/pub/WUIsBack/.github/LegacyUpdate32.dll -outfile '.\Release\LegacyUpdate.dll'
+        iwr https://ftp.vichingo455.freeddns.org/pub/WUIsBack/.github/LegacyUpdate64.dll -outfile '.\x64\Release\LegacyUpdate.dll'
+        iwr https://ftp.vichingo455.freeddns.org/pub/WUIsBack/.github/LegacyUpdate32.exe -outfile '.\launcher\obj\LegacyUpdate32.exe'
+        iwr https://ftp.vichingo455.freeddns.org/pub/WUIsBack/.github/LegacyUpdate64.exe -outfile '.\launcher\obj\LegacyUpdate64.exe'
     - name: Compile WUIsBack
       run: |
         makensis "setup\setup.nsi"

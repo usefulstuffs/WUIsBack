@@ -115,8 +115,8 @@ Var /GLOBAL UninstallInstalled
 !include Strings.nsh
 
 ; Uncomment lines below to enable code signing when compiling under Windows
-; !uninstfinalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
-; !finalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
+;!uninstfinalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
+;!finalize 'sign.cmd certFile certPassword "Legacy Update - Vichingo455 Mod" "%1"' = 0
 
 !macro RestartWUAUService
 	${DetailPrint} "$(StatusRestartingWUAU)"
@@ -343,11 +343,13 @@ ${MementoSection} "$(^Name)" LEGACYUPDATE
 
 	${If} $0 == "OK"
 		; HTTPS will work
+		${VerbosePrint} "Using HTTPS WSUS server and update page."
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER_HTTPS}"
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER_HTTPS}"
 		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL_HTTPS}"
 	${Else}
 		; Probably not supported; use HTTP
+		${VerbosePrint} "Using HTTP WSUS server and update page."
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUServer" "${WSUS_SERVER}"
 		WriteRegStr HKLM "${REGPATH_WUPOLICY}" "WUStatusServer" "${WSUS_SERVER}"
 		WriteRegStr HKLM "${REGPATH_WU}" "URL" "${UPDATE_URL}"
@@ -850,7 +852,7 @@ Function .onInit
 
 	; Try not to be too intrusive on Windows 10 and newer, which are (for now) fine
 	${If} ${AtLeastWin10}
-		!insertmacro RemoveSection ${ROOTCERTS}
+		;!insertmacro RemoveSection ${ROOTCERTS}
 	${EndIf}
 
 	${IfNot} ${AtLeastWin7}
@@ -984,12 +986,12 @@ Function PostInstall
 
 	${IfNot} ${Silent}
 	${AndIfNot} ${IsRunOnce}
-		${If} ${FileExists} "$INSTDIR\LegacyUpdate.exe"
-			Exec '"$INSTDIR\LegacyUpdate.exe" /launch $0'
-		${ElseIf} ${AtLeastWin10}
+		${If} ${AtLeastWin10}
 			ExecShell "" "ms-settings:windowsupdate"
 		${ElseIf} ${AtLeastWinVista}
 			Exec '"$WINDIR\system32\wuauclt.exe" /ShowWUAutoScan'
+		${ElseIf} ${FileExists} "$INSTDIR\LegacyUpdate.exe"
+			Exec '"$INSTDIR\LegacyUpdate.exe" /launch $0'
 		${EndIf}
 
 		; Launch activation wizard if requested by the user

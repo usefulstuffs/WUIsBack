@@ -36,8 +36,8 @@
 !define WEBSITE            "http://legacyupdate.net/"
 !define UPDATE_URL         "http://legacyupdate.net/windowsupdate/v6/"
 !define UPDATE_URL_HTTPS   "https://legacyupdate.net/windowsupdate/v6/"
-!define WSUS_SERVER        "http://vichingo455.ddns.net/v6"
-!define WSUS_SERVER_HTTPS  "https://vichingo455.ddns.net/v6"
+!define WSUS_SERVER        "http://update.vichingo455.freeddns.org"
+!define WSUS_SERVER_HTTPS  "https://update.vichingo455.freeddns.org"
 !define WUR_WEBSITE        "http://windowsupdaterestored.com/"
 !define TRUSTEDR           "http://download.windowsupdate.com/msdownload/update/v3/static/trustedr/en"
 
