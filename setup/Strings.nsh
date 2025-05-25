@@ -155,7 +155,7 @@ LangString SectionXPSP3Desc     ${LANG_ENGLISH} \
 LangString SectionXPESP3Desc    ${LANG_ENGLISH} \
 	"Updates Windows XP Embedded to Service Pack 3. Required if you would like to activate Windows online. $(SectionReboots) $(SectionSupEULA)"
 LangString SectionWES09Desc     ${LANG_ENGLISH} \
-	"Configures Windows to appear as Windows Embedded POSReady 2009 to Windows Update, enabling access to Windows XP security updates released between 2014 and 2019. Please note that Microsoft officially advises against doing this."
+	"Configures Windows to appear as Windows Embedded POSReady 2009 to Windows Update, enabling access to Windows XP security updates released between 2014 and 2019. Please note that Microsoft officially advises against doing this, and some updates may not install properly."
 LangString Section2003SP2Desc   ${LANG_ENGLISH} \
 	"Updates Windows XP Professional x64 Edition or Windows Server 2003 to Service Pack 2. Required if you would like to activate Windows online. $(SectionReboots) $(SectionSupEULA)"
 LangString SectionVistaSP2Desc  ${LANG_ENGLISH} \

@@ -940,6 +940,7 @@ Function PreDownload
 			Call DownloadWin7SP1
 		${EndIf}
 
+		Call DownloadKB3102810
 		Call DownloadKB3138612
 		Call DownloadKB4474419
 		Call DownloadKB4490628

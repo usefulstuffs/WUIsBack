@@ -143,6 +143,13 @@ Function RebootIfRequired
 	${Else}
 		; Restore setup keys
 		Call CleanUpRunOnce
+		; Give the user a moment to understand we're rebooting
+		${DetailPrint} "$(StatusRestarting)"
+		Sleep 2000
+		; Now reboot
+		Reboot
+		; To be sure
+		Sleep 10000
 	${EndIf}
 FunctionEnd
 
