@@ -304,7 +304,7 @@ ${MementoSection} "$(SectionRootCerts)" ROOTCERTS
 	${EndIf}
 ${MementoSectionEnd}
 
-${MementoSection} "$(SectionEnableMU)" WIN7MU
+${MementoUnselectedSection} "$(SectionEnableMU)" WIN7MU
 	LegacyUpdateNSIS::EnableMicrosoftUpdate
 	Pop $0
 	${If} $0 != 0

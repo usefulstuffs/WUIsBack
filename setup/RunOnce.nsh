@@ -18,9 +18,8 @@
 		System::Call '${GetUserName}(.r0, ${NSIS_MAX_STRLEN}) .r1'
 		${If} ${IsRunOnce}
 		${AndIf} $0 == "SYSTEM"
-			; Running in setup mode. Winlogon will reboot for us.
-			SetErrorLevel ${ERROR_SUCCESS}
-			Quit
+			; Running in setup mode. Reboot is mandatory.
+			Reboot
 		${Else}
 			; Regular reboot.
 			Reboot
@@ -143,13 +142,6 @@ Function RebootIfRequired
 	${Else}
 		; Restore setup keys
 		Call CleanUpRunOnce
-		; Give the user a moment to understand we're rebooting
-		${DetailPrint} "$(StatusRestarting)"
-		Sleep 2000
-		; Now reboot
-		Reboot
-		; To be sure
-		Sleep 10000
 	${EndIf}
 FunctionEnd
 
