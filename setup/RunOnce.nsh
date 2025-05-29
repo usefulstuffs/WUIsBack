@@ -18,8 +18,9 @@
 		System::Call '${GetUserName}(.r0, ${NSIS_MAX_STRLEN}) .r1'
 		${If} ${IsRunOnce}
 		${AndIf} $0 == "SYSTEM"
-			; Running in setup mode. Reboot is mandatory.
-			Reboot
+			; Running in setup mode
+			SetErrorLevel ${ERROR_SUCCESS}
+			Quit
 		${Else}
 			; Regular reboot.
 			Reboot
@@ -257,6 +258,12 @@ Function OnRunOnceDone
 		${If} $0 == "SYSTEM"
 			; Configure winlogon to proceed to the logon dialog
 			Call CleanUpRunOnce
+			; Reboot
+			${DetailPrint} "$(StatusRestarting)"
+			Sleep 2000
+			Reboot
+			; Just to be sure
+			Sleep 10000
 		${EndIf}
 	${EndIf}
 FunctionEnd
